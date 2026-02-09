@@ -251,11 +251,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 	const itineraryContext = buildItineraryContext(days ?? []);
 
-	// Fetch recent chat history (last 30 messages)
+	// Fetch recent chat history for this user (last 30 messages)
 	const { data: history } = await supabase
 		.from('chat_messages')
 		.select('role, content')
 		.eq('trip_id', TRIP_ID)
+		.eq('user_id', user.id)
 		.order('created_at', { ascending: false })
 		.limit(30);
 
@@ -375,6 +376,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 				await supabase.from('chat_messages').insert({
 					trip_id: TRIP_ID,
+					user_id: user.id,
 					role: 'assistant',
 					content: fullResponse,
 					...(metadata ? { metadata: metadata as unknown as Record<string, unknown> } : {})

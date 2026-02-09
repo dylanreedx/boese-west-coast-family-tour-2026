@@ -28,11 +28,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		return json({ error: 'Invalid request' }, { status: 400 });
 	}
 
-	// Fetch the message
+	// Fetch the message (scoped to current user)
 	const { data: message, error: fetchError } = await supabase
 		.from('chat_messages')
 		.select('*')
 		.eq('id', messageId)
+		.eq('user_id', user.id)
 		.single();
 
 	if (fetchError || !message) {

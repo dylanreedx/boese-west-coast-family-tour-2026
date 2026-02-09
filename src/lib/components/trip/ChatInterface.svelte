@@ -19,12 +19,14 @@
 	const queryClient = useQueryClient();
 
 	const messagesQuery = createQuery(() => ({
-		queryKey: ['chat-messages', TRIP_ID],
+		queryKey: ['chat-messages', TRIP_ID, userId],
+		enabled: !!userId,
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('chat_messages')
 				.select('*')
 				.eq('trip_id', TRIP_ID)
+				.eq('user_id', userId!)
 				.order('created_at');
 			if (error) throw error;
 			return data as ChatMessage[];
@@ -36,6 +38,27 @@
 	let streamingContent = $state('');
 	let streamingAction = $state<ActionMetadata | null>(null);
 	let scrollContainer: HTMLDivElement | undefined = $state();
+	let showClearConfirm = $state(false);
+	let isClearing = $state(false);
+
+	async function clearChat() {
+		if (!userId || isClearing) return;
+		isClearing = true;
+		try {
+			const { error } = await supabase
+				.from('chat_messages')
+				.delete()
+				.eq('trip_id', TRIP_ID)
+				.eq('user_id', userId);
+			if (error) throw error;
+			await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID, userId] });
+		} catch {
+			addToast('Failed to clear chat');
+		} finally {
+			isClearing = false;
+			showClearConfirm = false;
+		}
+	}
 
 	const allMessages = $derived([
 		...(messagesQuery.data ?? []),
@@ -95,7 +118,7 @@
 		};
 
 		queryClient.setQueryData(
-			['chat-messages', TRIP_ID],
+			['chat-messages', TRIP_ID, userId],
 			(old: ChatMessage[] | undefined) => [...(old ?? []), optimisticUserMsg]
 		);
 
@@ -148,12 +171,12 @@
 			}
 
 			// Refresh from DB to get server-generated IDs
-			await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID] });
+			await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID, userId] });
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Something went wrong';
 			addToast(msg);
 			// Revert optimistic update
-			await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID] });
+			await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID, userId] });
 		} finally {
 			isStreaming = false;
 			streamingContent = '';
@@ -169,7 +192,7 @@
 	}
 
 	function handleActionStatusChange() {
-		queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID] });
+		queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID, userId] });
 		queryClient.invalidateQueries({ queryKey: ['activities'] });
 		queryClient.invalidateQueries({ queryKey: ['days-with-activities'] });
 		queryClient.invalidateQueries({ queryKey: ['checklists'] });
@@ -204,6 +227,39 @@
 <div class="flex h-full flex-col">
 	<!-- Messages area -->
 	<div bind:this={scrollContainer} class="flex-1 overflow-y-auto px-4 py-4">
+		{#if allMessages.length > 0 && !isStreaming}
+			<div class="mb-3 flex justify-center">
+				{#if showClearConfirm}
+					<div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+						<span class="text-xs text-slate-500">Clear all messages?</span>
+						<button
+							onclick={clearChat}
+							disabled={isClearing}
+							class="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-600 transition-all active:scale-95 disabled:opacity-50"
+						>
+							{isClearing ? 'Clearing...' : 'Clear'}
+						</button>
+						<button
+							onclick={() => showClearConfirm = false}
+							class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500 transition-all active:scale-95"
+						>
+							Cancel
+						</button>
+					</div>
+				{:else}
+					<button
+						onclick={() => showClearConfirm = true}
+						class="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-400 shadow-sm transition-all hover:border-slate-300 hover:text-slate-600 active:scale-95"
+					>
+						<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+						</svg>
+						New chat
+					</button>
+				{/if}
+			</div>
+		{/if}
+
 		{#if messagesQuery.isLoading}
 			<div class="space-y-3">
 				{#each Array(3) as _}

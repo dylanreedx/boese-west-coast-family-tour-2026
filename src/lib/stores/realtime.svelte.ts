@@ -52,17 +52,8 @@ export function setupRealtime(
 		.on(
 			'postgres_changes',
 			{ event: '*', schema: 'public', table: 'chat_messages' },
-			(payload) => {
+			() => {
 				queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-
-				if (
-					payload.eventType === 'INSERT' &&
-					payload.new &&
-					payload.new.role === 'user' &&
-					payload.new.user_id !== currentUserId
-				) {
-					addToast('New message in Local Guide chat');
-				}
 			}
 		)
 		.subscribe();
