@@ -4,6 +4,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	import { page } from '$app/state';
 
 	let { data } = $props();
@@ -61,9 +62,11 @@
 	};
 </script>
 
-<svelte:head>
-	<title>Family - Boese West Coast Trip</title>
-</svelte:head>
+<SEO
+	title="Family - Boese West Coast Trip"
+	description="Trip crew for the Boese family West Coast road trip. Invite family members to help plan the adventure."
+	ogStyle="bold"
+/>
 
 <Header title="Family" supabase={data.supabase} userEmail={data.session?.user?.email} />
 

@@ -2,6 +2,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	import {
 		checklistsQuery,
 		useCreateChecklist,
@@ -66,9 +67,11 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Packing & Lists - Boese West Coast Trip</title>
-</svelte:head>
+<SEO
+	title="Packing & Lists - Boese West Coast Trip"
+	description="Shared packing lists and checklists for the Boese family West Coast road trip."
+	ogStyle="bold"
+/>
 
 <Header title="Packing & Lists" supabase={data.supabase} userEmail={data.session?.user?.email} />
 

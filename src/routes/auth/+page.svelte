@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import SEO from '$lib/components/SEO.svelte';
 
 	let { form } = $props();
 	let loading = $state(false);
 </script>
 
-<svelte:head>
-	<title>Sign In - Boese West Coast Trip</title>
-</svelte:head>
+<SEO
+	title="Sign In - Boese West Coast Trip"
+	description="Sign in to help plan the Boese family West Coast road trip. May 13–20, 2026."
+	ogStyle="journey"
+/>
 
 <div class="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-primary-50 to-white px-4">
 	<div class="w-full max-w-sm">

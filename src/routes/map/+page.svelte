@@ -4,6 +4,7 @@
 	import { TRIP_ID } from '$lib/types/app';
 	import Header from '$lib/components/layout/Header.svelte';
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 
 	let { data } = $props();
 
@@ -157,9 +158,14 @@
 </script>
 
 <svelte:head>
-	<title>Map - Boese West Coast Trip</title>
 	<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" />
 </svelte:head>
+
+<SEO
+	title="Map - Boese West Coast Trip"
+	description="Interactive route map for the Boese family West Coast road trip. See all 8 days of stops from Detroit to Joshua Tree."
+	ogStyle="journey"
+/>
 
 <Header title="Route Map" supabase={data.supabase} userEmail={data.session?.user?.email} />
 

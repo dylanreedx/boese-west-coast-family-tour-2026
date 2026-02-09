@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <!-- Desert/Canyon themed decorative background with semi-transparent illustrated elements -->
+  <!-- Use as a background-image with opacity or mix-blend-mode -->
+
+  <!-- Large cactus - left side -->
+  <g transform="translate(80, 200)" fill="#4f46e5" opacity="0.06">
+    <rect x="0" y="0" width="28" height="200" rx="14"/>
+    <rect x="-40" y="30" width="24" height="100" rx="12" transform="rotate(-12, -28, 80)"/>
+    <rect x="32" y="60" width="24" height="80" rx="12" transform="rotate(12, 44, 100)"/>
+    <!-- Arm tips -->
+    <circle cx="-38" cy="20" r="14"/>
+    <circle cx="44" cy="52" r="14"/>
+  </g>
+
+  <!-- Sun with rays - top right -->
+  <g transform="translate(640, 100)">
+    <circle cx="0" cy="0" r="60" fill="#f59e0b" opacity="0.07"/>
+    <circle cx="0" cy="0" r="40" fill="#f59e0b" opacity="0.06"/>
+    <g stroke="#f59e0b" stroke-width="4" opacity="0.05">
+      <line x1="0" y1="-80" x2="0" y2="-100"/>
+      <line x1="57" y1="-57" x2="71" y2="-71"/>
+      <line x1="80" y1="0" x2="100" y2="0"/>
+      <line x1="57" y1="57" x2="71" y2="71"/>
+      <line x1="0" y1="80" x2="0" y2="100"/>
+      <line x1="-57" y1="57" x2="-71" y2="71"/>
+      <line x1="-80" y1="0" x2="-100" y2="0"/>
+      <line x1="-57" y1="-57" x2="-71" y2="-71"/>
+    </g>
+  </g>
+
+  <!-- Mountain range - center -->
+  <g fill="#4f46e5" opacity="0.04">
+    <polygon points="200,500 320,320 440,500"/>
+    <polygon points="350,500 500,280 650,500"/>
+    <polygon points="520,500 620,350 720,500"/>
+  </g>
+
+  <!-- Car - bottom right -->
+  <g transform="translate(550, 620)" fill="#4f46e5" opacity="0.06">
+    <rect x="0" y="0" width="120" height="42" rx="12"/>
+    <rect x="18" y="-30" width="78" height="38" rx="16"/>
+    <!-- Windows -->
+    <rect x="26" y="-22" width="24" height="22" rx="6" fill="#f8fafc" opacity="0.3"/>
+    <rect x="58" y="-22" width="28" height="22" rx="6" fill="#f8fafc" opacity="0.3"/>
+    <!-- Wheels -->
+    <circle cx="30" cy="48" r="16"/>
+    <circle cx="30" cy="48" r="8" fill="#f8fafc" opacity="0.2"/>
+    <circle cx="92" cy="48" r="16"/>
+    <circle cx="92" cy="48" r="8" fill="#f8fafc" opacity="0.2"/>
+    <!-- Headlights -->
+    <rect x="114" y="10" width="12" height="8" rx="4" fill="#f59e0b" opacity="0.3"/>
+  </g>
+
+  <!-- Small cactus - bottom left -->
+  <g transform="translate(160, 600)" fill="#4f46e5" opacity="0.05">
+    <rect x="0" y="0" width="16" height="100" rx="8"/>
+    <rect x="18" y="20" width="14" height="50" rx="7" transform="rotate(10, 25, 45)"/>
+  </g>
+
+  <!-- Canyon arch - right side -->
+  <g transform="translate(620, 380)" fill="#4f46e5" opacity="0.04">
+    <path d="M0,120 L0,0 Q60,-40 120,0 L120,120 Q100,80 60,70 Q20,80 0,120Z"/>
+  </g>
+
+  <!-- Roadway/Route - diagonal -->
+  <g opacity="0.04">
+    <path d="M0,700 Q200,600 400,550 Q600,500 800,400" fill="none" stroke="#4f46e5" stroke-width="40" stroke-linecap="round"/>
+    <path d="M0,700 Q200,600 400,550 Q600,500 800,400" fill="none" stroke="#f8fafc" stroke-width="3" stroke-dasharray="16,12"/>
+  </g>
+
+  <!-- Scattered dots (stars/dust) -->
+  <g fill="#4f46e5" opacity="0.04">
+    <circle cx="300" cy="100" r="4"/>
+    <circle cx="500" cy="150" r="3"/>
+    <circle cx="700" cy="300" r="4"/>
+    <circle cx="150" cy="450" r="3"/>
+    <circle cx="400" cy="350" r="5"/>
+    <circle cx="250" cy="680" r="3"/>
+    <circle cx="700" cy="550" r="4"/>
+    <circle cx="100" cy="750" r="3"/>
+    <circle cx="450" cy="720" r="4"/>
+  </g>
+
+  <!-- Compass rose - top left -->
+  <g transform="translate(200, 130)" stroke="#4f46e5" fill="none" stroke-width="2" opacity="0.05">
+    <circle cx="0" cy="0" r="30"/>
+    <line x1="0" y1="-35" x2="0" y2="35"/>
+    <line x1="-35" y1="0" x2="35" y2="0"/>
+    <polygon points="0,-28 4,-8 -4,-8" fill="#4f46e5"/>
+  </g>
+</svg>

@@ -9,6 +9,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	import { useCreateActivity, useUpdateActivity, useDeleteActivity } from '$lib/queries/activities';
 	import { page } from '$app/state';
 
@@ -91,9 +92,11 @@
 	const DAY_EMOJIS = ['✈️', '🏜️', '🌵', '🏔️', '🌉', '🏖️', '🌴', '🏠'];
 </script>
 
-<svelte:head>
-	<title>Day {dayNumber} - Boese West Coast Trip</title>
-</svelte:head>
+<SEO
+	title="Day {dayNumber} - Boese West Coast Trip"
+	description="Day {dayNumber} itinerary for the Boese family West Coast road trip. View activities, vote on plans, and add comments."
+	ogStyle="bold"
+/>
 
 <Header title="Day {dayNumber}" supabase={data.supabase} userEmail={data.session?.user?.email} />
 

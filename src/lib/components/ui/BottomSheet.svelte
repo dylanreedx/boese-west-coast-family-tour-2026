@@ -11,6 +11,16 @@
 		children: import('svelte').Snippet;
 	} = $props();
 
+	// Lock body scroll when sheet is open
+	$effect(() => {
+		if (open) {
+			document.body.style.overflow = 'hidden';
+			return () => {
+				document.body.style.overflow = '';
+			};
+		}
+	});
+
 	function close() {
 		open = false;
 	}
@@ -33,12 +43,12 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity"
+		class="fixed inset-0 z-50 overflow-hidden bg-black/40 backdrop-blur-sm transition-opacity"
 		onclick={handleBackdropClick}
 	>
 		<!-- Sheet -->
 		<div
-			class="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl"
+			class="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white shadow-2xl"
 			style="animation: slideUp 0.3s ease-out"
 		>
 			<!-- Handle -->

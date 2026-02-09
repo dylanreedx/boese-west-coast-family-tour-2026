@@ -7,6 +7,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	import { detectGaps, gapSummary } from '$lib/utils/gap-detector';
 
 	let { data } = $props();
@@ -28,9 +29,11 @@
 	const gapStats = $derived(gapSummary(gaps));
 </script>
 
-<svelte:head>
-	<title>Boese West Coast Trip 2026</title>
-</svelte:head>
+<SEO
+	title="Boese West Coast Trip 2026"
+	description="8-day family road trip: Detroit to Phoenix, Grand Canyon, Las Vegas, Death Valley, San Francisco, Santa Monica, Joshua Tree and back. May 13–20, 2026."
+	ogStyle="journey"
+/>
 
 <Header supabase={data.supabase} userEmail={data.session?.user?.email} />
 
