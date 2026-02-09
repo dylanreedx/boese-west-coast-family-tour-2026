@@ -233,6 +233,7 @@
 		bind:open={editorOpen}
 		dayId={dayQuery.data.id}
 		existing={editingActivity}
+		supabase={data.supabase}
 		onsave={handleSave}
 		ondelete={handleDelete}
 	/>

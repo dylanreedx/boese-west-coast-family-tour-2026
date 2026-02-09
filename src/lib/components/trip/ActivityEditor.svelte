@@ -1,21 +1,29 @@
 <script lang="ts">
+	import type { SupabaseClient } from '@supabase/supabase-js';
+	import type { Database } from '$lib/types/database';
 	import type { ActivityType, ActivityStatus, ActivityInsert, ActivityUpdate } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
+	import LocationAutocomplete from '$lib/components/ui/LocationAutocomplete.svelte';
+	import { useLocationSuggestions } from '$lib/queries/activities';
 
 	let {
 		open = $bindable(false),
 		dayId,
 		existing = null,
+		supabase,
 		onsave,
 		ondelete
 	}: {
 		open: boolean;
 		dayId: string;
 		existing?: (ActivityUpdate & { id: string }) | null;
+		supabase: SupabaseClient<Database>;
 		onsave?: (data: ActivityInsert | (ActivityUpdate & { id: string })) => void;
 		ondelete?: (id: string, dayId: string) => void;
 	} = $props();
+
+	const locationSuggestions = useLocationSuggestions(supabase);
 
 	const activityTypes: ActivityType[] = ['sightseeing', 'restaurant', 'hotel', 'activity', 'drive', 'flight', 'shopping', 'rest', 'other'];
 	const statuses: ActivityStatus[] = ['confirmed', 'tentative', 'tbd'];
@@ -113,7 +121,7 @@
 				id="act-title"
 				bind:value={title}
 				placeholder="What's the activity?"
-				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-base md:text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
 			/>
 		</div>
 
@@ -144,18 +152,17 @@
 				id="act-time"
 				type="time"
 				bind:value={startTime}
-				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-base md:text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
 			/>
 		</div>
 
 		<!-- Location -->
 		<div>
 			<label for="act-location" class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Location (optional)</label>
-			<input
+			<LocationAutocomplete
 				id="act-location"
 				bind:value={locationName}
-				placeholder="Where is it?"
-				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+				suggestions={locationSuggestions.data ?? []}
 			/>
 		</div>
 
@@ -167,7 +174,7 @@
 				bind:value={description}
 				placeholder="Any details or notes..."
 				rows="2"
-				class="w-full resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+				class="w-full resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-base md:text-sm transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
 			></textarea>
 		</div>
 

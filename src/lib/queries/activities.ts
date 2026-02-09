@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
 import type { ActivityInsert, ActivityUpdate } from '$lib/types/app';
 import { TRIP_ID } from '$lib/types/app';
+import { CURATED_LOCATIONS } from '$lib/utils/location-suggestions';
 
 export function activitiesQuery(supabase: SupabaseClient<Database>, dayId: string) {
 	return createQuery(() => ({
@@ -58,6 +59,27 @@ export function useCreateActivity(supabase: SupabaseClient<Database>) {
 			queryClient.invalidateQueries({ queryKey: ['activities', data.day_id] });
 			queryClient.invalidateQueries({ queryKey: ['days-with-activities'] });
 		}
+	}));
+}
+
+export function useLocationSuggestions(supabase: SupabaseClient<Database>) {
+	return createQuery(() => ({
+		queryKey: ['location-suggestions'],
+		queryFn: async () => {
+			const { data, error } = await supabase
+				.from('activities')
+				.select('location_name')
+				.not('location_name', 'is', null)
+				.eq('trip_id', TRIP_ID);
+			if (error) throw error;
+			const dbLocations = data
+				.map((r) => r.location_name!)
+				.filter(Boolean);
+			const all = [...new Set([...CURATED_LOCATIONS, ...dbLocations])];
+			all.sort((a, b) => a.localeCompare(b));
+			return all;
+		},
+		staleTime: 30 * 60 * 1000
 	}));
 }
 
