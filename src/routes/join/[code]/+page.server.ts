@@ -1,5 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { createAdminClient } from '$lib/server/supabase-admin';
+import { sendMagicLinkEmail } from '$lib/server/email';
 
 const VALID_INVITE_CODES = ['BOESE2026'];
 
@@ -14,7 +16,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals, url, params }) => {
+	default: async ({ request, url, params }) => {
 		const code = params.code.toUpperCase();
 		if (!VALID_INVITE_CODES.includes(code)) {
 			return fail(400, { error: 'Invalid invite code' });
@@ -28,10 +30,12 @@ export const actions: Actions = {
 			return fail(400, { error: 'Name and email are required', email, name });
 		}
 
-		const { error } = await locals.supabase.auth.signInWithOtp({
+		const admin = createAdminClient();
+		const { data, error: linkError } = await admin.auth.admin.generateLink({
+			type: 'magiclink',
 			email,
 			options: {
-				emailRedirectTo: `${url.origin}/auth/callback?name=${encodeURIComponent(name.trim())}&invite=${code}`,
+				redirectTo: `${url.origin}/auth/callback?name=${encodeURIComponent(name.trim())}&invite=${code}`,
 				data: {
 					display_name: name.trim(),
 					invite_code: code
@@ -39,8 +43,19 @@ export const actions: Actions = {
 			}
 		});
 
-		if (error) {
-			return fail(500, { error: error.message, email, name });
+		if (linkError || !data?.properties?.action_link) {
+			return fail(500, { error: linkError?.message ?? 'Failed to generate sign-in link', email, name });
+		}
+
+		const { success, error: emailError } = await sendMagicLinkEmail({
+			to: email,
+			magicLinkUrl: data.properties.action_link,
+			recipientName: name.trim(),
+			isInvite: true
+		});
+
+		if (!success) {
+			return fail(500, { error: emailError ?? 'Failed to send email', email, name });
 		}
 
 		return { success: true, email };
