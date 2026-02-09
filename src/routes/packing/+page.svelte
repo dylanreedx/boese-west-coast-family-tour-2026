@@ -3,6 +3,7 @@
 	import BottomNav from '$lib/components/layout/BottomNav.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import SEO from '$lib/components/SEO.svelte';
+	import AiBadge from '$lib/components/trip/AiBadge.svelte';
 	import {
 		checklistsQuery,
 		useCreateChecklist,
@@ -135,8 +136,11 @@
 										</svg>
 									{/if}
 								</button>
-								<span class="flex-1 text-sm {item.is_checked ? 'text-slate-400 line-through' : 'text-slate-700'}">
+								<span class="flex flex-1 items-center gap-1.5 text-sm {item.is_checked ? 'text-slate-400 line-through' : 'text-slate-700'}">
 									{item.label}
+									{#if item.source === 'ai-guide'}
+										<AiBadge />
+									{/if}
 								</span>
 								<button
 									onclick={() => deleteItem.mutate({ id: item.id })}

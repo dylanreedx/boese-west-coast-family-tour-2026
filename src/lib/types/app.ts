@@ -16,6 +16,8 @@ export type ActivityUpdate = TablesUpdate<'activities'>;
 export type CommentInsert = TablesInsert<'comments'>;
 export type VoteInsert = TablesInsert<'votes'>;
 export type ChecklistItemInsert = TablesInsert<'checklist_items'>;
+export type ChatMessage = Tables<'chat_messages'>;
+export type ChatMessageInsert = TablesInsert<'chat_messages'>;
 
 export type ActivityType = Enums<'activity_type'>;
 export type ActivityStatus = Enums<'activity_status'>;
@@ -26,3 +28,37 @@ export type DayWithActivities = Day & { activities: Activity[] };
 export type ActivityWithVotes = Activity & { votes: Vote[] };
 
 export const TRIP_ID = '00000000-0000-0000-0000-000000000001';
+
+export type ActionStatus = 'pending' | 'approved' | 'dismissed';
+export type ActionMetadata =
+	| {
+			action: 'create_activity';
+			status: ActionStatus;
+			payload: {
+				day_number: number;
+				title: string;
+				type: ActivityType;
+				start_time?: string;
+				location_name?: string;
+				description?: string;
+				cost_estimate?: number;
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'add_packing_item';
+			status: ActionStatus;
+			payload: {
+				checklist_type: 'packing' | 'todo' | 'shopping';
+				label: string;
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'suggest_itinerary_change';
+			status: ActionStatus;
+			payload: {
+				day_number: number;
+				suggestion_text: string;
+			};
+	  };

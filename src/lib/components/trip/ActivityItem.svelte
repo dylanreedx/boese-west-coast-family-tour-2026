@@ -5,6 +5,7 @@
 	import { ACTIVITY_ICONS } from '$lib/utils/activity-icons';
 	import { formatTime, formatDuration } from '$lib/utils/date';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import AiBadge from '$lib/components/trip/AiBadge.svelte';
 	import VoteButtons from '$lib/components/trip/VoteButtons.svelte';
 	import CommentThread from '$lib/components/trip/CommentThread.svelte';
 
@@ -66,7 +67,12 @@
 		<!-- Content -->
 		<div class="min-w-0 flex-1">
 			<div class="flex items-start justify-between gap-2">
-				<h3 class="font-semibold text-slate-900 leading-tight">{activity.title}</h3>
+				<div class="flex items-center gap-1.5">
+					<h3 class="font-semibold text-slate-900 leading-tight">{activity.title}</h3>
+					{#if activity.source === 'ai-guide'}
+						<AiBadge />
+					{/if}
+				</div>
 				{#if activity.status}
 					<Badge status={activity.status} />
 				{/if}
