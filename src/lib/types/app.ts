@@ -66,3 +66,24 @@ export type ActionMetadata =
 				suggestion_text: string;
 			};
 	  };
+
+export type FamilyFeedback = {
+	reactions: { emoji: string; memberName: string }[];
+	reactionSummary: { emoji: string; count: number }[];
+};
+
+export type PlaceDetails = {
+	name: string;
+	rating?: number;
+	userRatingCount?: number;
+	priceLevel?: string;
+	formattedAddress?: string;
+	openNow?: boolean;
+	weekdayHours?: string[];
+	location?: { lat: number; lng: number };
+	photos: string[];
+	websiteUri?: string;
+	googleMapsUri?: string;
+	editorialSummary?: string;
+	mapsEmbedUrl?: string;
+};
