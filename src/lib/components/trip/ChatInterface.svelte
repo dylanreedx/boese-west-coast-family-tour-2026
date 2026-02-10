@@ -198,6 +198,52 @@
 		queryClient.invalidateQueries({ queryKey: ['checklists'] });
 	}
 
+	// Track which messages have been shared to family chat
+	const sharedMessagesQuery = createQuery(() => ({
+		queryKey: ['shared-guide-messages', TRIP_ID, userId],
+		enabled: !!userId,
+		queryFn: async () => {
+			const { data } = await supabase
+				.from('group_messages')
+				.select('shared_from_message_id')
+				.eq('trip_id', TRIP_ID)
+				.eq('user_id', userId!)
+				.not('shared_from_message_id', 'is', null);
+			return new Set((data ?? []).map((m) => m.shared_from_message_id));
+		}
+	}));
+
+	const sharedMessageIds = $derived(sharedMessagesQuery.data ?? new Set<string | null>());
+
+	async function shareToFamily(messageId: string, metadata: ActionMetadata) {
+		if (!userId) return;
+		const { error } = await supabase
+			.from('group_messages')
+			.insert({
+				trip_id: TRIP_ID,
+				user_id: userId,
+				content: getShareDescription(metadata),
+				shared_from_message_id: messageId,
+				shared_action_metadata: metadata as unknown as Record<string, unknown>
+			});
+		if (error) {
+			addToast('Failed to share to family chat');
+			return;
+		}
+		addToast('Shared to Family Chat!');
+		queryClient.invalidateQueries({ queryKey: ['shared-guide-messages', TRIP_ID, userId] });
+	}
+
+	function getShareDescription(meta: ActionMetadata): string {
+		if (meta.action === 'create_activity') {
+			return `What do you think about "${meta.payload.title}" for Day ${meta.payload.day_number}?`;
+		} else if (meta.action === 'add_packing_item') {
+			return `Should we add "${meta.payload.label}" to our ${meta.payload.checklist_type} list?`;
+		} else {
+			return `Check out this suggestion from my Local Guide!`;
+		}
+	}
+
 	function renderMarkdown(text: string): string {
 		return text
 			// Bold
@@ -320,6 +366,8 @@
 											metadata={actionMeta}
 											messageId={msg.id}
 											onStatusChange={handleActionStatusChange}
+											onShare={shareToFamily}
+											isShared={sharedMessageIds.has(msg.id)}
 										/>
 									{/if}
 								{/if}

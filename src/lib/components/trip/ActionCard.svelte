@@ -5,11 +5,15 @@
 	let {
 		metadata,
 		messageId,
-		onStatusChange
+		onStatusChange,
+		onShare,
+		isShared = false
 	}: {
 		metadata: ActionMetadata;
 		messageId: string;
 		onStatusChange?: () => void;
+		onShare?: (messageId: string, metadata: ActionMetadata) => void;
+		isShared?: boolean;
 	} = $props();
 
 	let loading = $state(false);
@@ -123,6 +127,27 @@
 
 	<!-- Footer: actions or status -->
 	{#if status === 'pending' && metadata.action !== 'suggest_itinerary_change'}
+		{#if onShare}
+			<div class="border-t border-amber-200">
+				<button
+					onclick={() => onShare?.(messageId, metadata)}
+					disabled={loading || isShared}
+					class="flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-50 active:scale-[0.98] disabled:opacity-50"
+				>
+					{#if isShared}
+						<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+						</svg>
+						Shared to Family
+					{:else}
+						<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+						</svg>
+						Share to Family
+					{/if}
+				</button>
+			</div>
+		{/if}
 		<div class="flex border-t border-amber-200">
 			<button
 				onclick={() => handleAction('approve')}
