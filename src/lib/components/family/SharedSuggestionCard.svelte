@@ -1,53 +1,48 @@
 <script lang="ts">
 	import type { ActionMetadata } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
-	import AiBadge from '$lib/components/trip/AiBadge.svelte';
+	import PlaceCard from '$lib/components/trip/PlaceCard.svelte';
 
 	let {
 		metadata,
 		sharerName,
-		isOwner = false,
-		messageId,
-		originalMessageId,
-		onApprove,
-		onDismiss
+		isOwner = false
 	}: {
 		metadata: ActionMetadata;
 		sharerName: string;
 		isOwner?: boolean;
-		messageId: string;
-		originalMessageId: string;
-		onApprove?: (originalMessageId: string) => void;
-		onDismiss?: (originalMessageId: string) => void;
 	} = $props();
 </script>
 
-<div class="overflow-hidden rounded-xl border border-violet-200 bg-white shadow-sm">
-	<!-- Header: attribution -->
-	<div class="flex items-center gap-2 border-b border-violet-100 bg-violet-50/50 px-3 py-2">
-		<AiBadge />
-		<span class="text-[10px] text-violet-600">
-			{isOwner ? 'Your suggestion' : `Shared by ${sharerName}`} from Local Guide
+<!-- Glimpse card: a peek into the guide chat -->
+<div class="overflow-hidden rounded-xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/60 shadow-sm">
+	<!-- Header: guide attribution with sparkle -->
+	<div class="flex items-center gap-1.5 px-3 py-1.5" style="background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(99,102,241,0.06))">
+		<svg class="h-3 w-3 text-violet-500" fill="currentColor" viewBox="0 0 24 24">
+			<path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+		</svg>
+		<span class="text-[10px] font-medium text-violet-600/90">
+			{isOwner ? 'You shared' : sharerName + ' shared'} from Local Guide
 		</span>
 	</div>
 
 	<!-- Content -->
-	<div class="p-3">
+	<div class="px-3 py-2.5">
 		{#if metadata.action === 'create_activity'}
 			{@const icon = ACTIVITY_ICONS[metadata.payload.type ?? 'other']}
 			{@const typeLabel = ACTIVITY_TYPE_LABELS[metadata.payload.type ?? 'other']}
 			<div class="flex items-start gap-2.5">
-				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-base shadow-sm">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
 					{icon}
 				</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-1.5">
-						<p class="text-sm font-semibold leading-tight text-slate-800">{metadata.payload.title}</p>
-						<span class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+						<p class="text-[13px] font-semibold leading-tight text-slate-800">{metadata.payload.title}</p>
+						<span class="inline-flex items-center rounded-full border border-indigo-200/60 bg-indigo-50/60 px-1.5 py-0.5 text-[9px] font-medium text-indigo-600">
 							{typeLabel}
 						</span>
 					</div>
-					<div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+					<div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
 						<span>Day {metadata.payload.day_number}</span>
 						{#if metadata.payload.start_time}
 							<span>{metadata.payload.start_time}</span>
@@ -60,69 +55,65 @@
 						{/if}
 					</div>
 					{#if metadata.payload.description}
-						<p class="mt-1 text-xs leading-relaxed text-slate-500">{metadata.payload.description}</p>
+						<p class="mt-1 text-[11px] leading-relaxed text-slate-500">{metadata.payload.description}</p>
 					{/if}
 				</div>
 			</div>
 		{:else if metadata.action === 'add_packing_item'}
 			{@const listIcon = metadata.payload.checklist_type === 'packing' ? '🧳' : metadata.payload.checklist_type === 'shopping' ? '🛒' : '📋'}
 			<div class="flex items-center gap-2.5">
-				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-base shadow-sm">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
 					{listIcon}
 				</div>
 				<div>
-					<p class="text-sm font-semibold text-slate-800">{metadata.payload.label}</p>
-					<p class="text-xs capitalize text-slate-500">{metadata.payload.checklist_type} list</p>
+					<p class="text-[13px] font-semibold text-slate-800">{metadata.payload.label}</p>
+					<p class="text-[11px] capitalize text-slate-500">{metadata.payload.checklist_type} list</p>
 				</div>
 			</div>
 		{:else if metadata.action === 'suggest_itinerary_change'}
 			<div class="flex items-start gap-2.5">
-				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-base shadow-sm">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
 					💡
 				</div>
 				<div>
-					<p class="text-xs font-medium text-slate-500">Suggestion for Day {metadata.payload.day_number}</p>
-					<p class="mt-0.5 text-sm text-slate-700">{metadata.payload.suggestion_text}</p>
+					<p class="text-[11px] font-medium text-slate-500">Suggestion for Day {metadata.payload.day_number}</p>
+					<p class="mt-0.5 text-[13px] text-slate-700">{metadata.payload.suggestion_text}</p>
 				</div>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Footer: owner-only actions -->
-	{#if metadata.status === 'pending' && metadata.action !== 'suggest_itinerary_change'}
-		{#if isOwner}
-			<div class="flex border-t border-violet-200">
-				<button
-					onclick={() => onApprove?.(originalMessageId)}
-					class="flex flex-1 items-center justify-center gap-1.5 border-r border-violet-200 py-2 text-xs font-semibold text-emerald-600 transition-all hover:bg-emerald-50 active:scale-[0.98]"
-				>
-					<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-					</svg>
-					Add to itinerary
-				</button>
-				<button
-					onclick={() => onDismiss?.(originalMessageId)}
-					class="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-semibold text-slate-400 transition-all hover:bg-slate-50 active:scale-[0.98]"
-				>
-					Dismiss
-				</button>
-			</div>
-		{:else}
-			<div class="border-t border-violet-100 px-3 py-2 text-center text-[10px] text-slate-400">
-				Only {sharerName} can add this to the itinerary
-			</div>
-		{/if}
-	{:else if metadata.status === 'approved'}
-		<div class="flex items-center gap-1.5 border-t border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+	<!-- Discovery links for activity suggestions -->
+	{#if metadata.action === 'create_activity' && metadata.status !== 'dismissed'}
+		<div class="border-t border-indigo-100/60 px-3">
+			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} compact />
+		</div>
+	{/if}
+
+	<!-- Status footer -->
+	{#if metadata.status === 'approved'}
+		<div class="flex items-center gap-1.5 border-t border-emerald-200/60 bg-emerald-50/50 px-3 py-1.5 text-[11px] font-medium text-emerald-700">
+			<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
 			</svg>
 			Added to itinerary
 		</div>
 	{:else if metadata.status === 'dismissed'}
-		<div class="flex items-center gap-1.5 border-t border-slate-200 px-3 py-2 text-xs text-slate-400">
+		<div class="flex items-center gap-1.5 border-t border-slate-200/60 px-3 py-1.5 text-[11px] text-slate-400">
+			<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+			</svg>
 			Dismissed
+		</div>
+	{:else if metadata.status === 'pending'}
+		<div class="border-t border-indigo-100/60 px-3 py-1.5">
+			<p class="text-center text-[10px] text-slate-400">
+				{#if isOwner}
+					Open <a href="/guide" class="font-medium text-indigo-500 hover:text-indigo-600">your Guide</a> to add to itinerary
+				{:else}
+					{sharerName} can add this from their Guide
+				{/if}
+			</p>
 		</div>
 	{/if}
 </div>

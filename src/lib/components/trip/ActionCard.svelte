@@ -1,19 +1,23 @@
 <script lang="ts">
 	import type { ActionMetadata, ActionStatus } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
+	import type { FamilyFeedback } from '$lib/types/app';
+	import PlaceCard from './PlaceCard.svelte';
 
 	let {
 		metadata,
 		messageId,
 		onStatusChange,
 		onShare,
-		isShared = false
+		isShared = false,
+		familyFeedback = null
 	}: {
 		metadata: ActionMetadata;
 		messageId: string;
 		onStatusChange?: () => void;
 		onShare?: (messageId: string, metadata: ActionMetadata) => void;
 		isShared?: boolean;
+		familyFeedback?: FamilyFeedback | null;
 	} = $props();
 
 	let loading = $state(false);
@@ -124,6 +128,48 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Visual discovery: photos + explore links for activities -->
+	{#if metadata.action === 'create_activity' && status !== 'dismissed'}
+		<div class="border-t {status === 'approved' ? 'border-emerald-200' : 'border-amber-200'}">
+			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} />
+		</div>
+	{/if}
+
+	<!-- Family feedback section: show reactions from family chat -->
+	{#if familyFeedback && familyFeedback.reactionSummary.length > 0}
+		<div class="border-t {status === 'approved' ? 'border-emerald-200' : status === 'dismissed' ? 'border-slate-200' : 'border-amber-200'} px-3 py-1.5">
+			<div class="flex items-center gap-1.5">
+				<svg class="h-3 w-3 flex-shrink-0 text-violet-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+				</svg>
+				<span class="text-[10px] font-medium text-violet-600">Family:</span>
+				<div class="flex items-center gap-1">
+					{#each familyFeedback.reactionSummary as { emoji, count }}
+						<span class="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] ring-1 ring-violet-200/60">
+							<span>{emoji}</span>
+							<span class="font-medium text-violet-700">{count}</span>
+						</span>
+					{/each}
+				</div>
+				{#if familyFeedback.reactions.length > 0}
+					{@const names = [...new Set(familyFeedback.reactions.map(r => r.memberName))]}
+					<span class="text-[10px] text-slate-400">
+						{names.slice(0, 3).join(', ')}{names.length > 3 ? ` +${names.length - 3}` : ''}
+					</span>
+				{/if}
+			</div>
+		</div>
+	{:else if isShared && (!familyFeedback || familyFeedback.reactionSummary.length === 0)}
+		<div class="border-t {status === 'approved' ? 'border-emerald-200' : status === 'dismissed' ? 'border-slate-200' : 'border-amber-200'} px-3 py-1.5">
+			<div class="flex items-center gap-1.5">
+				<svg class="h-3 w-3 flex-shrink-0 text-violet-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+				</svg>
+				<span class="text-[10px] text-slate-400">Shared to family &mdash; no reactions yet</span>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Footer: actions or status -->
 	{#if status === 'pending' && metadata.action !== 'suggest_itinerary_change'}
