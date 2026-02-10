@@ -260,6 +260,83 @@ export type Database = {
           },
         ]
       }
+      group_messages: {
+        Row: {
+          id: string
+          trip_id: string
+          user_id: string
+          content: string
+          shared_from_message_id: string | null
+          shared_action_metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          trip_id: string
+          user_id: string
+          content: string
+          shared_from_message_id?: string | null
+          shared_action_metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          trip_id?: string
+          user_id?: string
+          content?: string
+          shared_from_message_id?: string | null
+          shared_action_metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_messages_shared_from_message_id_fkey"
+            columns: ["shared_from_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          id: string
+          message_id: string
+          user_id: string
+          emoji: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          user_id: string
+          emoji: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          user_id?: string
+          emoji?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       days: {
         Row: {
           created_at: string | null
@@ -378,6 +455,7 @@ export type Database = {
           display_name: string
           id: string
           joined_at: string | null
+          last_active_at: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           trip_id: string | null
           user_id: string | null
@@ -387,6 +465,7 @@ export type Database = {
           display_name: string
           id?: string
           joined_at?: string | null
+          last_active_at?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           trip_id?: string | null
           user_id?: string | null
@@ -396,6 +475,7 @@ export type Database = {
           display_name?: string
           id?: string
           joined_at?: string | null
+          last_active_at?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           trip_id?: string | null
           user_id?: string | null

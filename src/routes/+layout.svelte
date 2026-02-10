@@ -3,6 +3,7 @@
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { onMount } from 'svelte';
 	import { setupRealtime } from '$lib/stores/realtime.svelte';
+	import { setupPresence } from '$lib/stores/presence.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 
 	let { children, data } = $props();
@@ -30,9 +31,17 @@
 			data.session?.user?.id
 		);
 
+		const memberName = data.session?.user?.user_metadata?.display_name;
+		const cleanupPresence = setupPresence(
+			data.supabase,
+			data.session?.user?.id,
+			memberName
+		);
+
 		return () => {
 			subscription.unsubscribe();
 			cleanupRealtime();
+			cleanupPresence();
 		};
 	});
 </script>

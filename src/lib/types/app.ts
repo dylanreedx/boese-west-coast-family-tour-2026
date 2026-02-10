@@ -18,6 +18,10 @@ export type VoteInsert = TablesInsert<'votes'>;
 export type ChecklistItemInsert = TablesInsert<'checklist_items'>;
 export type ChatMessage = Tables<'chat_messages'>;
 export type ChatMessageInsert = TablesInsert<'chat_messages'>;
+export type GroupMessage = Tables<'group_messages'>;
+export type GroupMessageInsert = TablesInsert<'group_messages'>;
+export type MessageReaction = Tables<'message_reactions'>;
+export type MessageReactionInsert = TablesInsert<'message_reactions'>;
 
 export type ActivityType = Enums<'activity_type'>;
 export type ActivityStatus = Enums<'activity_status'>;

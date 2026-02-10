@@ -56,6 +56,20 @@ export function setupRealtime(
 				queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
 			}
 		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema: 'public', table: 'group_messages' },
+			() => {
+				queryClient.invalidateQueries({ queryKey: ['group-messages'] });
+			}
+		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema: 'public', table: 'message_reactions' },
+			() => {
+				queryClient.invalidateQueries({ queryKey: ['group-messages'] });
+			}
+		)
 		.subscribe();
 
 	return () => {
