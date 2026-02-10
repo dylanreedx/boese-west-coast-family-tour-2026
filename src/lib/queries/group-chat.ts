@@ -13,16 +13,31 @@ export function groupMessagesQuery(supabase: SupabaseClient<Database>) {
 	return createQuery(() => ({
 		queryKey: ['group-messages', TRIP_ID],
 		queryFn: async () => {
-			const { data, error } = await supabase
-				.from('group_messages')
-				.select('*, trip_members!inner(display_name, avatar_color)')
-				.eq('trip_id', TRIP_ID)
-				.order('created_at')
-				.limit(200);
-			if (error) throw error;
+			// Fetch messages and members separately (no FK between group_messages and trip_members)
+			const [messagesResult, membersResult] = await Promise.all([
+				supabase
+					.from('group_messages')
+					.select('*')
+					.eq('trip_id', TRIP_ID)
+					.order('created_at')
+					.limit(200),
+				supabase
+					.from('trip_members')
+					.select('user_id, display_name, avatar_color')
+					.eq('trip_id', TRIP_ID)
+			]);
+
+			if (messagesResult.error) throw messagesResult.error;
+			const messages = messagesResult.data ?? [];
+			const members = membersResult.data ?? [];
+
+			// Build member lookup
+			const memberMap = new Map(
+				members.map((m) => [m.user_id, { display_name: m.display_name, avatar_color: m.avatar_color }])
+			);
 
 			// Fetch reactions for all messages
-			const messageIds = (data ?? []).map((m) => m.id);
+			const messageIds = messages.map((m) => m.id);
 			let reactions: { id: string; message_id: string; emoji: string; user_id: string }[] = [];
 			if (messageIds.length > 0) {
 				const { data: rxns } = await supabase
@@ -32,9 +47,10 @@ export function groupMessagesQuery(supabase: SupabaseClient<Database>) {
 				reactions = rxns ?? [];
 			}
 
-			// Merge reactions into messages
-			return (data ?? []).map((msg) => ({
+			// Merge members and reactions into messages
+			return messages.map((msg) => ({
 				...msg,
+				trip_members: memberMap.get(msg.user_id) ?? null,
 				reactions: reactions.filter((r) => r.message_id === msg.id)
 			})) as GroupMessageWithMember[];
 		}

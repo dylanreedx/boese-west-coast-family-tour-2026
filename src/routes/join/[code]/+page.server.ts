@@ -47,9 +47,16 @@ export const actions: Actions = {
 			return fail(500, { error: linkError?.message ?? 'Failed to generate sign-in link', email, name });
 		}
 
+		const actionUrl = new URL(data.properties.action_link);
+		const tokenHash = actionUrl.searchParams.get('token');
+		if (!tokenHash) {
+			return fail(500, { error: 'Failed to extract sign-in token', email, name });
+		}
+		const callbackUrl = `${url.origin}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=magiclink&name=${encodeURIComponent(name.trim())}&invite=${encodeURIComponent(code)}`;
+
 		const { success, error: emailError } = await sendMagicLinkEmail({
 			to: email,
-			magicLinkUrl: data.properties.action_link,
+			magicLinkUrl: callbackUrl,
 			recipientName: name.trim(),
 			isInvite: true
 		});

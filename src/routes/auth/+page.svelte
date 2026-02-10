@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import SEO from '$lib/components/SEO.svelte';
 
-	let { form } = $props();
+	let { form, data } = $props();
 	let loading = $state(false);
 </script>
 
@@ -20,6 +20,12 @@
 			<h1 class="mt-3 text-2xl font-extrabold text-slate-900">Boese West Coast Trip</h1>
 			<p class="mt-1 text-sm text-slate-500">May 13-20, 2026</p>
 		</div>
+
+		{#if data.error === 'expired'}
+			<div class="mb-4 rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-700">
+				Your sign-in link has expired or was already used. Please request a new one.
+			</div>
+		{/if}
 
 		{#if form?.success}
 			<!-- Success state -->
@@ -73,11 +79,14 @@
 						class="mt-4 w-full rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if loading}
-							Sending link...
+							{data.dev ? 'Signing in...' : 'Sending link...'}
 						{:else}
-							Send Magic Link
+							{data.dev ? 'Sign In (Dev)' : 'Send Magic Link'}
 						{/if}
 					</button>
+					{#if data.dev}
+						<p class="mt-2 text-center text-[10px] text-amber-600">Dev mode: skips email, signs in directly</p>
+					{/if}
 				</form>
 			</div>
 
