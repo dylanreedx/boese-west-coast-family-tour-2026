@@ -23,7 +23,8 @@
 	}));
 
 	let mapContainer: HTMLDivElement;
-	let map: any;
+	let map = $state<any>(null);
+	let mapLoaded = $state(false);
 	let selectedDay = $state<number | null>(null);
 
 	const DAY_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'];
@@ -43,6 +44,7 @@
 			map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 			map.on('load', () => {
+				mapLoaded = true;
 				addMapData(maplibregl);
 			});
 
@@ -131,9 +133,9 @@
 		}
 	}
 
-	// Re-add data when query completes
+	// Re-add data when query completes or map finishes loading
 	$effect(() => {
-		if (daysQuery.data && map?.loaded()) {
+		if (daysQuery.data && mapLoaded) {
 			import('maplibre-gl').then(({ default: maplibregl }) => {
 				addMapData(maplibregl);
 			});
