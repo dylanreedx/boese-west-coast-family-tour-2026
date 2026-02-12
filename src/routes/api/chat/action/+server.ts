@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createServiceClient } from '$lib/server/supabase';
 import { TRIP_ID } from '$lib/types/app';
 import type { ActionMetadata } from '$lib/types/app';
+import { findActivityByTitle, findMemberByName } from '$lib/utils/fuzzy-match';
 
 /** Extract HH:MM time from various formats the AI might return */
 function parseTime(value: string | undefined | null): string | null {
@@ -10,6 +11,36 @@ function parseTime(value: string | undefined | null): string | null {
 	// Match HH:MM anywhere in the string (covers "19:30", "2026-05-16T19:30:00", etc.)
 	const match = value.match(/(\d{1,2}:\d{2})/);
 	return match ? match[1] : null;
+}
+
+async function getDayActivities(
+	supabase: ReturnType<typeof createServiceClient>,
+	dayNumber: number
+): Promise<{ dayId: string; activities: { id: string; title: string; sort_order: number }[] } | null> {
+	const { data: day } = await supabase
+		.from('days')
+		.select('id')
+		.eq('trip_id', TRIP_ID)
+		.eq('day_number', dayNumber)
+		.single();
+
+	if (!day) return null;
+
+	const { data: activities } = await supabase
+		.from('activities')
+		.select('id, title, sort_order')
+		.eq('day_id', day.id)
+		.order('sort_order');
+
+	return { dayId: day.id, activities: activities ?? [] };
+}
+
+async function getTripMembers(supabase: ReturnType<typeof createServiceClient>) {
+	const { data } = await supabase
+		.from('trip_members')
+		.select('*')
+		.eq('trip_id', TRIP_ID);
+	return data ?? [];
 }
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
@@ -155,6 +186,135 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			return json({ error: 'Failed to add item' }, { status: 500 });
 		}
 		resultId = item.id;
+	} else if (metadata.action === 'replace_activity') {
+		const { payload } = metadata;
+		const dayData = await getDayActivities(supabase, payload.day_number);
+		if (!dayData) return json({ error: `Day ${payload.day_number} not found` }, { status: 404 });
+
+		const { match, error: matchError } = findActivityByTitle(dayData.activities as any, payload.old_title);
+		if (!match) return json({ error: matchError ?? 'Activity not found' }, { status: 404 });
+
+		// Delete old activity
+		await supabase.from('activities').delete().eq('id', match.id);
+
+		// Insert new at same sort_order
+		const { data: activity, error: insertError } = await supabase
+			.from('activities')
+			.insert({
+				trip_id: TRIP_ID,
+				day_id: dayData.dayId,
+				title: payload.new_title,
+				type: payload.new_type,
+				status: 'tentative',
+				start_time: parseTime(payload.start_time),
+				location_name: payload.location_name ?? null,
+				description: payload.description ?? null,
+				cost_estimate: payload.cost_estimate ?? null,
+				sort_order: match.sort_order,
+				source: 'ai-guide',
+				created_by: user.id
+			})
+			.select('id')
+			.single();
+
+		if (insertError || !activity) return json({ error: 'Failed to create replacement activity' }, { status: 500 });
+		resultId = activity.id;
+
+	} else if (metadata.action === 'delete_activity') {
+		const { payload } = metadata;
+		const dayData = await getDayActivities(supabase, payload.day_number);
+		if (!dayData) return json({ error: `Day ${payload.day_number} not found` }, { status: 404 });
+
+		const { match, error: matchError } = findActivityByTitle(dayData.activities as any, payload.activity_title);
+		if (!match) return json({ error: matchError ?? 'Activity not found' }, { status: 404 });
+
+		const { error: deleteError } = await supabase.from('activities').delete().eq('id', match.id);
+		if (deleteError) return json({ error: 'Failed to delete activity' }, { status: 500 });
+		resultId = match.id;
+
+	} else if (metadata.action === 'update_activity') {
+		const { payload } = metadata;
+		const dayData = await getDayActivities(supabase, payload.day_number);
+		if (!dayData) return json({ error: `Day ${payload.day_number} not found` }, { status: 404 });
+
+		const { match, error: matchError } = findActivityByTitle(dayData.activities as any, payload.activity_title);
+		if (!match) return json({ error: matchError ?? 'Activity not found' }, { status: 404 });
+
+		const updateFields: Record<string, unknown> = {};
+		if (payload.updates.start_time !== undefined) updateFields.start_time = parseTime(payload.updates.start_time);
+		if (payload.updates.cost_estimate !== undefined) updateFields.cost_estimate = payload.updates.cost_estimate;
+		if (payload.updates.status !== undefined) updateFields.status = payload.updates.status;
+		if (payload.updates.description !== undefined) updateFields.description = payload.updates.description;
+		if (payload.updates.location_name !== undefined) updateFields.location_name = payload.updates.location_name;
+		if (payload.updates.title !== undefined) updateFields.title = payload.updates.title;
+
+		const { error: updateError } = await supabase
+			.from('activities')
+			.update(updateFields)
+			.eq('id', match.id);
+
+		if (updateError) return json({ error: 'Failed to update activity' }, { status: 500 });
+		resultId = match.id;
+
+	} else if (metadata.action === 'log_expense') {
+		const { payload } = metadata;
+
+		let paidByMemberId: string;
+		const members = await getTripMembers(supabase);
+		if (payload.paid_by_name) {
+			const member = findMemberByName(members, payload.paid_by_name);
+			if (!member) return json({ error: `Member "${payload.paid_by_name}" not found` }, { status: 404 });
+			paidByMemberId = member.id;
+		} else {
+			const self = members.find((m) => m.user_id === user.id);
+			if (!self) return json({ error: 'Could not find your member record' }, { status: 404 });
+			paidByMemberId = self.id;
+		}
+
+		const { data: expense, error: insertError } = await supabase
+			.from('expenses')
+			.insert({
+				trip_id: TRIP_ID,
+				title: payload.title,
+				total_amount: payload.amount,
+				category: payload.category,
+				day_number: payload.day_number ?? null,
+				paid_by_member_id: paidByMemberId,
+				notes: payload.notes ?? null,
+				expense_date: new Date().toISOString().split('T')[0]
+			})
+			.select('id')
+			.single();
+
+		if (insertError || !expense) return json({ error: 'Failed to log expense' }, { status: 500 });
+		resultId = expense.id;
+
+	} else if (metadata.action === 'record_payment') {
+		const { payload } = metadata;
+		const members = await getTripMembers(supabase);
+
+		const fromMember = findMemberByName(members, payload.from_name);
+		if (!fromMember) return json({ error: `Member "${payload.from_name}" not found` }, { status: 404 });
+
+		const toMember = findMemberByName(members, payload.to_name);
+		if (!toMember) return json({ error: `Member "${payload.to_name}" not found` }, { status: 404 });
+
+		const { data: payment, error: insertError } = await supabase
+			.from('expense_payments')
+			.insert({
+				trip_id: TRIP_ID,
+				from_member_id: fromMember.id,
+				to_member_id: toMember.id,
+				amount: payload.amount,
+				method: payload.method ?? 'cash',
+				notes: payload.notes ?? null
+			})
+			.select('id')
+			.single();
+
+		if (insertError || !payment) return json({ error: 'Failed to record payment' }, { status: 500 });
+		resultId = payment.id;
+
 	} else if (metadata.action === 'suggest_itinerary_change') {
 		// Suggestions are informational — just mark approved
 	}
