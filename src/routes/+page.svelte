@@ -9,6 +9,7 @@
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import { detectGaps, gapSummary } from '$lib/utils/gap-detector';
+	import { formatCurrencyCompact, sumActivityCosts } from '$lib/utils/currency';
 
 	let { data } = $props();
 	const trip = tripQuery(data.supabase);
@@ -27,6 +28,7 @@
 		daysWithActivities.data ? detectGaps(daysWithActivities.data) : []
 	);
 	const gapStats = $derived(gapSummary(gaps));
+	const tripEstimate = $derived(sumActivityCosts(allActivities));
 </script>
 
 <SEO
@@ -74,6 +76,9 @@
 				<p class="text-xs text-slate-500">
 					{totalConfirmed} confirmed, {totalTbd} TBD{gapStats.critical > 0 ? `, ${gapStats.critical} missing hotel${gapStats.critical === 1 ? '' : 's'}` : ''}
 				</p>
+				{#if tripEstimate > 0}
+					<p class="mt-0.5 text-xs font-medium text-emerald-600">Estimated: {formatCurrencyCompact(tripEstimate)}</p>
+				{/if}
 			</div>
 		</div>
 	{/if}

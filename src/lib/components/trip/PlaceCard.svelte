@@ -1,16 +1,25 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { PlaceDetails } from '$lib/types/app';
+	import MiniMap from '$lib/components/trip/MiniMap.svelte';
 
 	let {
 		title,
 		locationName,
-		compact = false
+		defaultExpanded = false,
+		mapActivities,
+		currentActivityId,
+		dayNumber
 	}: {
 		title: string;
 		locationName?: string;
-		compact?: boolean;
+		defaultExpanded?: boolean;
+		mapActivities?: Array<{ id: string; title: string; latitude: number | null; longitude: number | null; sort_order: number }>;
+		currentActivityId?: string;
+		dayNumber?: number;
 	} = $props();
+
+	let expanded = $state(defaultExpanded);
 
 	const searchQuery = $derived(
 		[title, locationName].filter(Boolean).join(' ')
@@ -25,6 +34,19 @@
 			if (!res.ok) return null;
 			const data = await res.json();
 			return data.details as PlaceDetails | null;
+		}
+	}));
+
+	// Self-fetch day activities when dayNumber provided but mapActivities is not
+	const routeQuery = createQuery(() => ({
+		queryKey: ['day-activities', dayNumber],
+		enabled: !!dayNumber && !mapActivities,
+		staleTime: 1000 * 60 * 5,
+		queryFn: async () => {
+			const res = await fetch(`/api/day/${dayNumber}/activities`);
+			if (!res.ok) return [];
+			const data = await res.json();
+			return data.activities as Array<{ id: string; title: string; latitude: number | null; longitude: number | null; sort_order: number }>;
 		}
 	}));
 
@@ -47,7 +69,23 @@
 	const details = $derived(detailsQuery.data);
 	const heroPhoto = $derived(details?.photos?.[0] ?? null);
 	const remainingPhotos = $derived(details?.photos?.slice(1) ?? []);
-	const hasMap = $derived(!!details?.mapsEmbedUrl);
+	const hasMap = $derived(
+		(mapActivities && dayNumber != null) ||
+		(routeQuery.data && routeQuery.data.length > 0 && dayNumber != null) ||
+		!!details?.location
+	);
+
+	// Priority: explicit prop > fetched > single-pin fallback
+	const resolvedMapActivities = $derived(
+		mapActivities ?? routeQuery.data ?? (details?.location ? [{
+			id: 'place-pin',
+			title: details.name,
+			latitude: details.location.lat,
+			longitude: details.location.lng,
+			sort_order: 0
+		}] : [])
+	);
+	const resolvedDayNumber = $derived(dayNumber ?? 1);
 
 	const PRICE_LABELS: Record<string, string> = {
 		'PRICE_LEVEL_FREE': 'Free',
@@ -62,8 +100,8 @@
 	);
 </script>
 
-<!-- COMPACT VARIANT -->
-{#if compact}
+<!-- COLLAPSED: compact summary row -->
+{#if !expanded}
 	{#if detailsQuery.isLoading}
 		<div class="flex items-center gap-2.5 py-1">
 			<div class="h-[60px] w-[80px] flex-shrink-0 animate-pulse rounded-lg bg-slate-200/80"></div>
@@ -73,7 +111,12 @@
 			</div>
 		</div>
 	{:else if details}
-		<div class="flex items-center gap-2.5 py-1">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="collapsed-row flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 transition-all hover:bg-slate-50 active:scale-[0.99]"
+			onclick={() => expanded = true}
+		>
 			{#if heroPhoto}
 				<div class="compact-thumb relative h-[60px] w-[80px] flex-shrink-0 overflow-hidden rounded-lg shadow-sm">
 					<img
@@ -100,12 +143,19 @@
 					{#if priceLabel}
 						<span class="text-[10px] font-medium text-slate-400">{priceLabel}</span>
 					{/if}
+					{#if details.formattedAddress}
+						<span class="truncate text-[10px] text-slate-400">{details.formattedAddress}</span>
+					{/if}
 				</div>
 			</div>
+			<!-- Expand chevron -->
+			<svg class="h-4 w-4 flex-shrink-0 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+			</svg>
 		</div>
 	{/if}
 
-<!-- FULL VARIANT -->
+<!-- EXPANDED: full card -->
 {:else}
 	{#if detailsQuery.isLoading}
 		<!-- Skeleton: hero -->
@@ -123,7 +173,7 @@
 			</div>
 		</div>
 	{:else if details}
-		<div class="place-card overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60">
+		<div class="place-card expand-reveal overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60">
 			<!-- Hero photo with gradient overlay -->
 			{#if heroPhoto}
 				<div class="hero-container relative h-[160px] w-full overflow-hidden">
@@ -134,6 +184,16 @@
 						loading="lazy"
 					/>
 					<div class="hero-gradient absolute inset-0"></div>
+
+					<!-- Collapse chevron -->
+					<button
+						onclick={() => expanded = false}
+						class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white/80 backdrop-blur-sm transition-all hover:bg-black/50"
+					>
+						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+						</svg>
+					</button>
 
 					<!-- Overlay badges: rating + price -->
 					<div class="absolute bottom-0 left-0 right-0 flex items-end justify-between p-3">
@@ -161,6 +221,18 @@
 							</span>
 						{/if}
 					</div>
+				</div>
+			{:else}
+				<!-- No hero: show collapse button inline -->
+				<div class="flex justify-end px-2 pt-2">
+					<button
+						onclick={() => expanded = false}
+						class="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100"
+					>
+						<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+						</svg>
+					</button>
 				</div>
 			{/if}
 
@@ -251,16 +323,14 @@
 				</div>
 
 				<!-- Map embed (expandable) -->
-				{#if showMap && details.mapsEmbedUrl}
-					<div class="embed-reveal mt-2 overflow-hidden rounded-lg ring-1 ring-slate-200">
-						<iframe
-							src={details.mapsEmbedUrl}
-							title="Map of {details.name}"
-							class="h-[200px] w-full border-0"
-							loading="lazy"
-							referrerpolicy="no-referrer-when-downgrade"
-							allowfullscreen
-						></iframe>
+				{#if showMap && resolvedMapActivities.length > 0}
+					<div class="embed-reveal mt-2">
+						<MiniMap
+							activities={resolvedMapActivities}
+							{currentActivityId}
+							dayNumber={resolvedDayNumber}
+							height="200px"
+						/>
 					</div>
 				{/if}
 
@@ -355,6 +425,21 @@
 		to {
 			opacity: 1;
 			transform: scaleY(1);
+		}
+	}
+
+	/* Expand reveal animation */
+	.expand-reveal {
+		animation: expandCard 0.3s ease-out;
+	}
+	@keyframes expandCard {
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 

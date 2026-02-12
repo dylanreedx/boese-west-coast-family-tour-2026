@@ -86,7 +86,7 @@
 	<!-- Discovery links for activity suggestions -->
 	{#if metadata.action === 'create_activity' && metadata.status !== 'dismissed'}
 		<div class="border-t border-indigo-100/60 px-3">
-			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} compact />
+			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} dayNumber={metadata.payload.day_number} />
 		</div>
 	{/if}
 

@@ -73,6 +73,33 @@ export function setupRealtime(
 				queryClient.invalidateQueries({ queryKey: ['family-feedback'] });
 			}
 		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema: 'public', table: 'expenses' },
+			(payload) => {
+				queryClient.invalidateQueries({ queryKey: ['expenses'] });
+				if (payload.eventType === 'INSERT' && payload.new) {
+					const expense = payload.new as { title?: string };
+					if (expense.title) {
+						addToast(`New expense: ${expense.title}`);
+					}
+				}
+			}
+		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema: 'public', table: 'expense_splits' },
+			() => {
+				queryClient.invalidateQueries({ queryKey: ['expenses'] });
+			}
+		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema: 'public', table: 'expense_payments' },
+			() => {
+				queryClient.invalidateQueries({ queryKey: ['expense-payments'] });
+			}
+		)
 		.subscribe();
 
 	return () => {

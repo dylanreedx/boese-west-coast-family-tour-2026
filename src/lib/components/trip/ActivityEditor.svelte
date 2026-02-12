@@ -34,6 +34,7 @@
 	let description = $state('');
 	let locationName = $state('');
 	let startTime = $state('');
+	let costEstimate = $state('');
 	let confirmDelete = $state(false);
 
 	// Sync form fields when existing activity changes or editor opens
@@ -45,12 +46,15 @@
 			description = existing?.description ?? '';
 			locationName = existing?.location_name ?? '';
 			startTime = existing?.start_time ?? '';
+			costEstimate = existing?.cost_estimate != null ? String(existing.cost_estimate) : '';
 			confirmDelete = false;
 		}
 	});
 
 	function handleSave() {
 		if (!title.trim()) return;
+
+		const parsedCost = costEstimate ? parseFloat(costEstimate) : null;
 
 		const data = {
 			title: title.trim(),
@@ -59,6 +63,7 @@
 			description: description.trim() || null,
 			location_name: locationName.trim() || null,
 			start_time: startTime || null,
+			cost_estimate: parsedCost && !isNaN(parsedCost) ? parsedCost : null,
 			day_id: dayId
 		};
 
@@ -91,6 +96,7 @@
 		description = '';
 		locationName = '';
 		startTime = '';
+		costEstimate = '';
 		confirmDelete = false;
 	}
 </script>
@@ -163,6 +169,20 @@
 				id="act-location"
 				bind:value={locationName}
 				suggestions={locationSuggestions.data ?? []}
+			/>
+		</div>
+
+		<!-- Cost -->
+		<div>
+			<label for="act-cost" class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Cost Estimate $ (optional)</label>
+			<input
+				id="act-cost"
+				type="number"
+				min="0"
+				step="0.01"
+				bind:value={costEstimate}
+				placeholder="0.00"
+				class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-base md:text-sm transition-all focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
 			/>
 		</div>
 

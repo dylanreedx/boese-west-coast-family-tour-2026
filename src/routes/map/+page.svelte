@@ -22,12 +22,12 @@
 		}
 	}));
 
+	import { DAY_COLORS } from '$lib/utils/map-colors';
+
 	let mapContainer: HTMLDivElement;
 	let map = $state<any>(null);
 	let mapLoaded = $state(false);
 	let selectedDay = $state<number | null>(null);
-
-	const DAY_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'];
 
 	onMount(() => {
 		let cleanup: (() => void) | undefined;
@@ -54,8 +54,27 @@
 		return () => cleanup?.();
 	});
 
+	let markersOnMap: any[] = [];
+
+	function clearMapData() {
+		if (!map) return;
+		for (const m of markersOnMap) m.remove();
+		markersOnMap = [];
+
+		for (let d = 1; d <= 8; d++) {
+			try {
+				if (map.getLayer(`route-line-${d}`)) map.removeLayer(`route-line-${d}`);
+				if (map.getSource(`route-day-${d}`)) map.removeSource(`route-day-${d}`);
+			} catch {
+				// may not exist
+			}
+		}
+	}
+
 	function addMapData(maplibregl: any) {
 		if (!daysQuery.data || !map) return;
+
+		clearMapData();
 
 		const allCoords: [number, number][] = [];
 
@@ -116,10 +135,11 @@
 						</div>
 					`);
 
-				new maplibregl.Marker({ element: el })
+				const marker = new maplibregl.Marker({ element: el })
 					.setLngLat([activity.longitude, activity.latitude])
 					.setPopup(popup)
 					.addTo(map);
+				markersOnMap.push(marker);
 			}
 		}
 
@@ -158,10 +178,6 @@
 		});
 	}
 </script>
-
-<svelte:head>
-	<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" />
-</svelte:head>
 
 <SEO
 	title="Map - Boese West Coast Trip"

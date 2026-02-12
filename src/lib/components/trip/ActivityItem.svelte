@@ -4,8 +4,10 @@
 	import type { Database } from '$lib/types/database';
 	import { ACTIVITY_ICONS } from '$lib/utils/activity-icons';
 	import { formatTime, formatDuration } from '$lib/utils/date';
+	import { formatCurrency } from '$lib/utils/currency';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import AiBadge from '$lib/components/trip/AiBadge.svelte';
+	import PlaceCard from '$lib/components/trip/PlaceCard.svelte';
 	import VoteButtons from '$lib/components/trip/VoteButtons.svelte';
 	import CommentThread from '$lib/components/trip/CommentThread.svelte';
 
@@ -17,7 +19,9 @@
 		compact = false,
 		onclick,
 		userId,
-		supabase
+		supabase,
+		allActivities,
+		dayNumber
 	}: {
 		activity: Activity;
 		votes?: Vote[];
@@ -25,6 +29,8 @@
 		onclick?: () => void;
 		userId?: string | null;
 		supabase?: SupabaseClient<Database>;
+		allActivities?: Activity[];
+		dayNumber?: number;
 	} = $props();
 
 	const icon = $derived(ACTIVITY_ICONS[activity.type ?? 'other']);
@@ -101,11 +107,29 @@
 					</span>
 				{/if}
 				{#if activity.cost_estimate}
-					<span class="flex items-center gap-1 text-xs text-slate-400">
-						${activity.cost_estimate}
+					<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+						<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+						</svg>
+						{formatCurrency(activity.cost_estimate)}
 					</span>
 				{/if}
 			</div>
+
+			{#if !isDrive && activity.location_name}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="mt-2" onclick={(e) => e.stopPropagation()}>
+					<PlaceCard
+						title={activity.title}
+						locationName={activity.location_name}
+						mapActivities={allActivities}
+						currentActivityId={activity.id}
+						{dayNumber}
+						defaultExpanded={false}
+					/>
+				</div>
+			{/if}
 
 			{#if supabase}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->

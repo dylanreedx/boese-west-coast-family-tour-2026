@@ -132,7 +132,7 @@
 	<!-- Visual discovery: photos + explore links for activities -->
 	{#if metadata.action === 'create_activity' && status !== 'dismissed'}
 		<div class="border-t {status === 'approved' ? 'border-emerald-200' : 'border-amber-200'}">
-			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} />
+			<PlaceCard title={metadata.payload.title} locationName={metadata.payload.location_name} dayNumber={metadata.payload.day_number} defaultExpanded={true} />
 		</div>
 	{/if}
 

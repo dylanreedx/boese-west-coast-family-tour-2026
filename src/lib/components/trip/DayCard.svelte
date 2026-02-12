@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Day, Activity } from '$lib/types/app';
 	import { formatDate, formatDayName } from '$lib/utils/date';
+	import { formatCurrencyCompact, sumActivityCosts } from '$lib/utils/currency';
 
 	let { day, activities = [], active = false }: {
 		day: Day;
@@ -12,6 +13,8 @@
 	const tbdCount = $derived(activities.filter(a => a.status === 'tbd').length);
 	const totalCount = $derived(activities.length);
 	const progress = $derived(totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0);
+
+	const dayCost = $derived(sumActivityCosts(activities));
 
 	const DAY_EMOJIS = ['✈️', '🏜️', '🌵', '🏔️', '🌉', '🏖️', '🌴', '🏠'];
 	const emoji = $derived(DAY_EMOJIS[(day.day_number - 1) % DAY_EMOJIS.length]);
@@ -46,4 +49,8 @@
 			<span class="text-[10px] font-medium text-emerald-600">All set</span>
 		{/if}
 	</div>
+
+	{#if dayCost > 0}
+		<p class="mt-1.5 text-[10px] font-medium text-emerald-600">{formatCurrencyCompact(dayCost)} est.</p>
+	{/if}
 </a>

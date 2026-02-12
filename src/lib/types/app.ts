@@ -23,10 +23,40 @@ export type GroupMessageInsert = TablesInsert<'group_messages'>;
 export type MessageReaction = Tables<'message_reactions'>;
 export type MessageReactionInsert = TablesInsert<'message_reactions'>;
 
+export type Expense = Tables<'expenses'>;
+export type ExpenseInsert = TablesInsert<'expenses'>;
+export type ExpenseSplit = Tables<'expense_splits'>;
+export type ExpensePayment = Tables<'expense_payments'>;
+
 export type ActivityType = Enums<'activity_type'>;
 export type ActivityStatus = Enums<'activity_status'>;
+export type ExpenseCategory = Enums<'expense_category'>;
 export type UserRole = Enums<'user_role'>;
 export type VoteType = Enums<'vote_type'>;
+
+export const EXPENSE_CATEGORY_ICONS: Record<ExpenseCategory, string> = {
+	accommodation: '🏨',
+	food: '🍽️',
+	transport: '🚗',
+	activities: '🎯',
+	fuel: '⛽',
+	parking: '🅿️',
+	shopping: '🛍️',
+	tips: '💵',
+	other: '📦'
+};
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+	accommodation: 'Accommodation',
+	food: 'Food & Drink',
+	transport: 'Transport',
+	activities: 'Activities',
+	fuel: 'Fuel',
+	parking: 'Parking',
+	shopping: 'Shopping',
+	tips: 'Tips',
+	other: 'Other'
+};
 
 export type DayWithActivities = Day & { activities: Activity[] };
 export type ActivityWithVotes = Activity & { votes: Vote[] };
