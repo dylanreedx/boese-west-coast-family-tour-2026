@@ -38,7 +38,9 @@ You can also modify the itinerary — replacing, deleting, or updating activitie
 
 You can log expenses and record payments between family members. When someone says "we spent $45 on lunch" or "Dylan sent Dad $150", use the expense tools. Match family member names to the list provided.
 
-For budget questions like "how much have we spent?", use get_budget_summary to fetch the latest data, then present it in a clear, readable format.`;
+For budget questions like "how much have we spent?", use get_budget_summary to fetch the latest data, then present it in a clear, readable format.
+
+When the user asks what's planned for a specific day or wants to see their schedule, use get_day_details to show them a rich visual overview. When they ask to find or search for places, restaurants, or attractions, use search_places to show them results with photos and ratings they can browse and add directly to their itinerary.`;
 
 const TOOLS: ChatCompletionTool[] = [
 	{
@@ -253,6 +255,46 @@ const TOOLS: ChatCompletionTool[] = [
 				type: 'object',
 				properties: {},
 				required: []
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_day_details',
+			description:
+				'Get a detailed view of a specific day\'s itinerary with all activities. Use when the user asks to see what\'s planned for a day, wants an overview of a day, or asks "what are we doing on day X?". This will show them a visual day card.',
+			parameters: {
+				type: 'object',
+				properties: {
+					day_number: {
+						type: 'number',
+						description: 'The day number (1-8) to show details for'
+					}
+				},
+				required: ['day_number']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'search_places',
+			description:
+				'Search for restaurants, attractions, or points of interest near a trip destination. Use when the user asks to find, show, or recommend specific types of places like "find restaurants near X" or "coffee shops in Y". Returns rich place cards with photos and ratings that the user can browse and add to their itinerary.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Search query including what to find and where, e.g. "best tacos in Phoenix" or "coffee shops near Grand Canyon South Rim"'
+					},
+					day_number: {
+						type: 'number',
+						description: 'The day number (1-8) this search relates to, for the user to add results to the itinerary. Infer from the location if not explicitly stated.'
+					}
+				},
+				required: ['query']
 			}
 		}
 	}
@@ -607,6 +649,93 @@ async function fetchBudgetSummary(
 	};
 }
 
+async function fetchDayDetails(
+	supabase: ReturnType<typeof createServiceClient>,
+	dayNumber: number
+): Promise<Record<string, unknown> | null> {
+	const { data: day } = await supabase
+		.from('days')
+		.select('day_number, title, date, activities(id, title, start_time, location_name, type, status, cost_estimate, description, sort_order)')
+		.eq('trip_id', TRIP_ID)
+		.eq('day_number', dayNumber)
+		.order('sort_order', { referencedTable: 'activities' })
+		.single();
+
+	if (!day) return null;
+
+	const activities = day.activities ?? [];
+	const totalCost = activities.reduce((sum: number, a: { cost_estimate: number | null }) => sum + (a.cost_estimate ?? 0), 0);
+
+	return {
+		day_number: day.day_number,
+		title: day.title,
+		date: day.date,
+		activities: activities.map((a: any) => ({
+			title: a.title,
+			type: a.type,
+			start_time: a.start_time,
+			location_name: a.location_name,
+			status: a.status,
+			cost_estimate: a.cost_estimate,
+			description: a.description
+		})),
+		activity_count: activities.length,
+		total_estimated_cost: totalCost
+	};
+}
+
+async function fetchPlacesSearch(query: string): Promise<{ places: Array<Record<string, unknown>> }> {
+	const apiKey = env.GOOGLE_PLACES_API_KEY;
+	if (!apiKey) return { places: [] };
+
+	try {
+		const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-Goog-Api-Key': apiKey,
+				'X-Goog-FieldMask':
+					'places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
+			},
+			body: JSON.stringify({ textQuery: query, maxResultCount: 3 })
+		});
+
+		if (!res.ok) return { places: [] };
+
+		const data = await res.json();
+		const results = data.places ?? [];
+
+		const places = results.map((place: any) => {
+			const photos: string[] = (place.photos ?? [])
+				.slice(0, 3)
+				.map(
+					(p: { name: string }) =>
+						`https://places.googleapis.com/v1/${p.name}/media?maxWidthPx=400&maxHeightPx=300&key=${apiKey}`
+				);
+
+			return {
+				name: place.displayName?.text ?? '',
+				rating: place.rating,
+				userRatingCount: place.userRatingCount,
+				priceLevel: place.priceLevel,
+				formattedAddress: place.formattedAddress,
+				openNow: place.regularOpeningHours?.openNow,
+				location: place.location
+					? { lat: place.location.latitude, lng: place.location.longitude }
+					: undefined,
+				photos,
+				websiteUri: place.websiteUri,
+				googleMapsUri: place.googleMapsUri,
+				editorialSummary: place.editorialSummary?.text
+			};
+		});
+
+		return { places };
+	} catch {
+		return { places: [] };
+	}
+}
+
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	if (!env.OPENAI_API_KEY) {
 		return json({ error: 'OpenAI API key not configured' }, { status: 500 });
@@ -692,6 +821,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	});
 
 	let fullResponse = '';
+	let richData: Record<string, unknown> | null = null;
 	// Track tool calls accumulated across chunks
 	const toolCallArgs: Record<number, { id: string; name: string; args: string }> = {};
 
@@ -765,6 +895,67 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 										);
 									}
 								}
+							} else if (toolCall.name === 'get_day_details') {
+								const dayData = await fetchDayDetails(supabase, parsedArgs.day_number as number);
+								const followUpMessages: OpenAI.ChatCompletionMessageParam[] = [
+									...messages,
+									{ role: 'assistant', content: null, tool_calls: [{ id: toolCall.id, type: 'function', function: { name: 'get_day_details', arguments: toolCall.args } }] },
+									{ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(dayData ?? { error: 'Day not found' }) }
+								];
+								const followUp = await openai.chat.completions.create({
+									model: 'gpt-4.1-mini',
+									messages: followUpMessages,
+									stream: true,
+									max_tokens: 1000,
+									temperature: 0.8
+								});
+								for await (const chunk of followUp) {
+									const c = chunk.choices[0];
+									if (c?.delta?.content) {
+										fullResponse += c.delta.content;
+										controller.enqueue(
+											encoder.encode(`data: ${JSON.stringify({ delta: c.delta.content })}\n\n`)
+										);
+									}
+								}
+								// Send structured day data for rich UI rendering
+								if (dayData) {
+									richData = { day_data: dayData };
+									controller.enqueue(
+										encoder.encode(`data: ${JSON.stringify({ dayCard: dayData })}\n\n`)
+									);
+								}
+							} else if (toolCall.name === 'search_places') {
+								const placesResult = await fetchPlacesSearch(parsedArgs.query as string);
+								const dayNumber = parsedArgs.day_number as number | undefined;
+								const followUpMessages: OpenAI.ChatCompletionMessageParam[] = [
+									...messages,
+									{ role: 'assistant', content: null, tool_calls: [{ id: toolCall.id, type: 'function', function: { name: 'search_places', arguments: toolCall.args } }] },
+									{ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(placesResult) }
+								];
+								const followUp = await openai.chat.completions.create({
+									model: 'gpt-4.1-mini',
+									messages: followUpMessages,
+									stream: true,
+									max_tokens: 1000,
+									temperature: 0.8
+								});
+								for await (const chunk of followUp) {
+									const c = chunk.choices[0];
+									if (c?.delta?.content) {
+										fullResponse += c.delta.content;
+										controller.enqueue(
+											encoder.encode(`data: ${JSON.stringify({ delta: c.delta.content })}\n\n`)
+										);
+									}
+								}
+								// Send structured places data for carousel UI
+								if (placesResult.places.length > 0) {
+									richData = { places_data: placesResult.places, places_context: { day_number: dayNumber } };
+									controller.enqueue(
+										encoder.encode(`data: ${JSON.stringify({ places: placesResult.places, placesContext: { day_number: dayNumber } })}\n\n`)
+									);
+								}
 							} else {
 								// Write tools: show ActionCard for user approval
 								const actionMeta = buildActionMetadata(toolCall.name, parsedArgs);
@@ -797,12 +988,17 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 					metadata = buildActionMetadata(firstToolCall.name, parsedArgs);
 				}
 
+				const saveMetadata = {
+					...(metadata ? (metadata as unknown as Record<string, unknown>) : {}),
+					...(richData ?? {})
+				};
+
 				await supabase.from('chat_messages').insert({
 					trip_id: TRIP_ID,
 					user_id: user.id,
 					role: 'assistant',
 					content: fullResponse,
-					...(metadata ? { metadata: metadata as unknown as Record<string, unknown> } : {})
+					...(Object.keys(saveMetadata).length > 0 ? { metadata: saveMetadata } : {})
 				});
 
 				controller.enqueue(encoder.encode('data: [DONE]\n\n'));

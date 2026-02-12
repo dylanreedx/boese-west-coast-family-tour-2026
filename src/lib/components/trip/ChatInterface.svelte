@@ -2,11 +2,13 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import type { Database } from '$lib/types/database';
-	import type { ChatMessage, ActionMetadata, FamilyFeedback } from '$lib/types/app';
+	import type { ChatMessage, ActionMetadata, FamilyFeedback, PlaceDetails } from '$lib/types/app';
 	import { TRIP_ID } from '$lib/types/app';
 	import { addToast } from '$lib/stores/toasts.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import ActionCard from '$lib/components/trip/ActionCard.svelte';
+	import DayDetailCard from '$lib/components/trip/DayDetailCard.svelte';
+	import PlacesCarousel from '$lib/components/trip/PlacesCarousel.svelte';
 
 	let {
 		supabase,
@@ -37,6 +39,8 @@
 	let isStreaming = $state(false);
 	let streamingContent = $state('');
 	let streamingAction = $state<ActionMetadata | null>(null);
+	let streamingDayCard = $state<Record<string, unknown> | null>(null);
+	let streamingPlaces = $state<{ places: PlaceDetails[]; dayNumber?: number } | null>(null);
 	let scrollContainer: HTMLDivElement | undefined = $state();
 	let showClearConfirm = $state(false);
 	let isClearing = $state(false);
@@ -62,7 +66,7 @@
 
 	const allMessages = $derived([
 		...(messagesQuery.data ?? []),
-		...(isStreaming && (streamingContent || streamingAction)
+		...(isStreaming && (streamingContent || streamingAction || streamingDayCard || streamingPlaces)
 			? [{
 				id: 'streaming',
 				role: 'assistant',
@@ -70,8 +74,17 @@
 				created_at: new Date().toISOString(),
 				trip_id: TRIP_ID,
 				user_id: null,
-				metadata: streamingAction
-			} satisfies ChatMessage & { metadata: ActionMetadata | null }]
+				metadata: (() => {
+					const meta: Record<string, unknown> = {};
+					if (streamingAction) Object.assign(meta, streamingAction);
+					if (streamingDayCard) meta.day_data = streamingDayCard;
+					if (streamingPlaces) {
+						meta.places_data = streamingPlaces.places;
+						meta.places_context = { day_number: streamingPlaces.dayNumber };
+					}
+					return Object.keys(meta).length > 0 ? meta : null;
+				})()
+			} satisfies ChatMessage & { metadata: Record<string, unknown> | null }]
 			: [])
 	]);
 
@@ -105,6 +118,8 @@
 		isStreaming = true;
 		streamingContent = '';
 		streamingAction = null;
+		streamingDayCard = null;
+		streamingPlaces = null;
 
 		// Optimistically add user message to cache
 		const optimisticUserMsg: ChatMessage = {
@@ -163,6 +178,15 @@
 						if (parsed.action) {
 							streamingAction = parsed.action as ActionMetadata;
 						}
+						if (parsed.dayCard) {
+							streamingDayCard = parsed.dayCard;
+						}
+						if (parsed.places) {
+							streamingPlaces = {
+								places: parsed.places as PlaceDetails[],
+								dayNumber: parsed.placesContext?.day_number
+							};
+						}
 					} catch (e) {
 						if (e instanceof SyntaxError) continue;
 						throw e;
@@ -181,6 +205,8 @@
 			isStreaming = false;
 			streamingContent = '';
 			streamingAction = null;
+			streamingDayCard = null;
+			streamingPlaces = null;
 		}
 	}
 
@@ -335,6 +361,43 @@
 		if (m.action && m.status) return m;
 		return null;
 	}
+
+	function getMessageDayCard(msg: ChatMessage & { metadata?: unknown }): Record<string, unknown> | null {
+		if (!msg.metadata) return null;
+		const m = msg.metadata as Record<string, unknown>;
+		return (m.day_data as Record<string, unknown>) ?? null;
+	}
+
+	function getMessagePlaces(msg: ChatMessage & { metadata?: unknown }): { places: PlaceDetails[]; dayNumber?: number } | null {
+		if (!msg.metadata) return null;
+		const m = msg.metadata as Record<string, unknown>;
+		const places = m.places_data as PlaceDetails[] | undefined;
+		if (!places || places.length === 0) return null;
+		const ctx = m.places_context as { day_number?: number } | undefined;
+		return { places, dayNumber: ctx?.day_number };
+	}
+
+	async function handlePlacesQuickAdd(metadata: ActionMetadata) {
+		if (!userId) return;
+		const payload = (metadata as any).payload;
+		const description = `I'd like to add **${payload.title}** to Day ${payload.day_number}. Shall I go ahead?`;
+		const { error } = await supabase
+			.from('chat_messages')
+			.insert({
+				trip_id: TRIP_ID,
+				user_id: userId,
+				role: 'assistant',
+				content: description,
+				metadata: metadata as unknown as Record<string, unknown>
+			});
+
+		if (error) {
+			addToast('Failed to prepare action');
+			return;
+		}
+
+		await queryClient.invalidateQueries({ queryKey: ['chat-messages', TRIP_ID, userId] });
+	}
 </script>
 
 <div class="flex h-full flex-col">
@@ -417,7 +480,7 @@
 						{@const actionMeta = getMessageMetadata(msg)}
 						<div class="flex justify-start">
 							<div class="max-w-[80%] rounded-2xl rounded-bl-md bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm">
-								{#if msg.id === 'streaming' && !streamingContent && !streamingAction}
+								{#if msg.id === 'streaming' && !streamingContent && !streamingAction && !streamingDayCard && !streamingPlaces}
 									<div class="flex gap-1">
 										<span class="h-2 w-2 animate-bounce rounded-full bg-slate-300" style="animation-delay: 0ms"></span>
 										<span class="h-2 w-2 animate-bounce rounded-full bg-slate-300" style="animation-delay: 150ms"></span>
@@ -436,6 +499,18 @@
 											onShare={shareToFamily}
 											isShared={sharedMessageIds.has(msg.id)}
 											familyFeedback={familyFeedback.get(msg.id) ?? null}
+										/>
+									{/if}
+									{@const dayCard = getMessageDayCard(msg)}
+									{@const placesData = getMessagePlaces(msg)}
+									{#if dayCard}
+										<DayDetailCard data={dayCard} />
+									{/if}
+									{#if placesData}
+										<PlacesCarousel
+											places={placesData.places}
+											dayNumber={placesData.dayNumber}
+											onQuickAdd={handlePlacesQuickAdd}
 										/>
 									{/if}
 								{/if}
