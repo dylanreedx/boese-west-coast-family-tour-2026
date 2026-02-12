@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ActionMetadata, ActionStatus } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
+	import { EXPENSE_CATEGORY_ICONS } from '$lib/types/app';
 	import type { FamilyFeedback } from '$lib/types/app';
 	import PlaceCard from './PlaceCard.svelte';
 
@@ -126,6 +127,127 @@
 					<p class="mt-0.5 text-sm text-slate-700">{metadata.payload.suggestion_text}</p>
 				</div>
 			</div>
+		{:else if metadata.action === 'replace_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg {status === 'dismissed' ? 'bg-slate-100' : 'bg-white'} text-base shadow-sm">
+					🔄
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-xs font-medium text-slate-500">Replace on Day {metadata.payload.day_number}</p>
+					<div class="mt-1 space-y-1">
+						<div class="flex items-center gap-1.5 text-sm">
+							<span class="text-red-400 line-through">{metadata.payload.old_title}</span>
+							<svg class="h-3 w-3 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+							</svg>
+							<span class="font-semibold {status === 'dismissed' ? 'text-slate-400' : 'text-slate-800'}">{metadata.payload.new_title}</span>
+						</div>
+					</div>
+					<div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+						{#if metadata.payload.start_time}<span>{metadata.payload.start_time}</span>{/if}
+						{#if metadata.payload.location_name}<span>{metadata.payload.location_name}</span>{/if}
+						{#if metadata.payload.cost_estimate}<span>${metadata.payload.cost_estimate}</span>{/if}
+					</div>
+				</div>
+			</div>
+		{:else if metadata.action === 'delete_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg {status === 'dismissed' ? 'bg-slate-100' : 'bg-red-50'} text-base shadow-sm">
+					🗑️
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-xs font-medium text-slate-500">Remove from Day {metadata.payload.day_number}</p>
+					<p class="mt-0.5 text-sm font-semibold {status === 'approved' ? 'text-red-400 line-through' : status === 'dismissed' ? 'text-slate-400' : 'text-slate-800'}">
+						{metadata.payload.activity_title}
+					</p>
+				</div>
+			</div>
+		{:else if metadata.action === 'update_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg {status === 'dismissed' ? 'bg-slate-100' : 'bg-white'} text-base shadow-sm">
+					✏️
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-semibold {status === 'dismissed' ? 'text-slate-400' : 'text-slate-800'}">
+						{metadata.payload.activity_title}
+					</p>
+					<p class="text-xs text-slate-500">Day {metadata.payload.day_number}</p>
+					<div class="mt-1 flex flex-wrap gap-1.5">
+						{#if metadata.payload.updates.start_time}
+							<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200/60">
+								Time → {metadata.payload.updates.start_time}
+							</span>
+						{/if}
+						{#if metadata.payload.updates.cost_estimate !== undefined}
+							<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">
+								Cost → ${metadata.payload.updates.cost_estimate}
+							</span>
+						{/if}
+						{#if metadata.payload.updates.status}
+							<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200/60">
+								Status → {metadata.payload.updates.status}
+							</span>
+						{/if}
+						{#if metadata.payload.updates.location_name}
+							<span class="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200/60">
+								Location → {metadata.payload.updates.location_name}
+							</span>
+						{/if}
+						{#if metadata.payload.updates.description}
+							<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+								Description updated
+							</span>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{:else if metadata.action === 'log_expense'}
+			{@const catIcon = EXPENSE_CATEGORY_ICONS[metadata.payload.category] ?? '📦'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg {status === 'dismissed' ? 'bg-slate-100' : 'bg-emerald-50'} text-base shadow-sm">
+					{catIcon}
+				</div>
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center gap-2">
+						<p class="text-sm font-semibold {status === 'dismissed' ? 'text-slate-400 line-through' : 'text-slate-800'}">
+							{metadata.payload.title}
+						</p>
+						<span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+							${metadata.payload.amount.toFixed(2)}
+						</span>
+					</div>
+					<div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+						<span class="capitalize">{metadata.payload.category}</span>
+						{#if metadata.payload.day_number}<span>Day {metadata.payload.day_number}</span>{/if}
+						{#if metadata.payload.paid_by_name}<span>Paid by {metadata.payload.paid_by_name}</span>{/if}
+					</div>
+					{#if metadata.payload.notes}
+						<p class="mt-0.5 text-xs text-slate-400">{metadata.payload.notes}</p>
+					{/if}
+				</div>
+			</div>
+		{:else if metadata.action === 'record_payment'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg {status === 'dismissed' ? 'bg-slate-100' : 'bg-blue-50'} text-base shadow-sm">
+					💸
+				</div>
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center gap-1.5 text-sm font-semibold {status === 'dismissed' ? 'text-slate-400' : 'text-slate-800'}">
+						<span>{metadata.payload.from_name}</span>
+						<svg class="h-3 w-3 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+						</svg>
+						<span>{metadata.payload.to_name}</span>
+						<span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+							${metadata.payload.amount.toFixed(2)}
+						</span>
+					</div>
+					<div class="mt-0.5 flex items-center gap-x-2 text-xs text-slate-500">
+						{#if metadata.payload.method}<span class="capitalize">{metadata.payload.method}</span>{/if}
+						{#if metadata.payload.notes}<span>{metadata.payload.notes}</span>{/if}
+					</div>
+				</div>
+			</div>
 		{/if}
 	</div>
 
@@ -203,7 +325,21 @@
 				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
 				</svg>
-				Add to itinerary
+				{#if metadata.action === 'create_activity'}
+					Add to itinerary
+				{:else if metadata.action === 'replace_activity'}
+					Replace activity
+				{:else if metadata.action === 'delete_activity'}
+					Remove activity
+				{:else if metadata.action === 'update_activity'}
+					Update activity
+				{:else if metadata.action === 'log_expense'}
+					Log expense
+				{:else if metadata.action === 'record_payment'}
+					Record payment
+				{:else}
+					Approve
+				{/if}
 			</button>
 			<button
 				onclick={() => handleAction('dismiss')}
@@ -220,8 +356,18 @@
 			</svg>
 			{#if metadata.action === 'create_activity'}
 				Added to Day {metadata.payload.day_number} as tentative
+			{:else if metadata.action === 'replace_activity'}
+				Replaced on Day {metadata.payload.day_number}
+			{:else if metadata.action === 'delete_activity'}
+				Removed from Day {metadata.payload.day_number}
+			{:else if metadata.action === 'update_activity'}
+				Updated on Day {metadata.payload.day_number}
 			{:else if metadata.action === 'add_packing_item'}
 				Added to {metadata.payload.checklist_type} list
+			{:else if metadata.action === 'log_expense'}
+				Expense logged
+			{:else if metadata.action === 'record_payment'}
+				Payment recorded
 			{:else}
 				Noted
 			{/if}

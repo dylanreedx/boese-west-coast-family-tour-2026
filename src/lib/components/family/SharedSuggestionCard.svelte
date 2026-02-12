@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ActionMetadata } from '$lib/types/app';
+	import { EXPENSE_CATEGORY_ICONS } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
 	import PlaceCard from '$lib/components/trip/PlaceCard.svelte';
 
@@ -80,6 +81,71 @@
 					<p class="mt-0.5 text-[13px] text-slate-700">{metadata.payload.suggestion_text}</p>
 				</div>
 			</div>
+		{:else if metadata.action === 'replace_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
+					🔄
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-[11px] font-medium text-slate-500">Replace on Day {metadata.payload.day_number}</p>
+					<div class="mt-0.5 flex items-center gap-1.5 text-[13px]">
+						<span class="text-red-400 line-through">{metadata.payload.old_title}</span>
+						<span class="text-slate-400">→</span>
+						<span class="font-semibold text-slate-800">{metadata.payload.new_title}</span>
+					</div>
+				</div>
+			</div>
+		{:else if metadata.action === 'delete_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
+					🗑️
+				</div>
+				<div>
+					<p class="text-[11px] font-medium text-slate-500">Remove from Day {metadata.payload.day_number}</p>
+					<p class="mt-0.5 text-[13px] font-semibold text-slate-800">{metadata.payload.activity_title}</p>
+				</div>
+			</div>
+		{:else if metadata.action === 'update_activity'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
+					✏️
+				</div>
+				<div>
+					<p class="text-[13px] font-semibold text-slate-800">{metadata.payload.activity_title}</p>
+					<p class="text-[11px] text-slate-500">Update on Day {metadata.payload.day_number}</p>
+				</div>
+			</div>
+		{:else if metadata.action === 'log_expense'}
+			{@const catIcon = EXPENSE_CATEGORY_ICONS[metadata.payload.category] ?? '📦'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
+					{catIcon}
+				</div>
+				<div>
+					<div class="flex items-center gap-1.5">
+						<p class="text-[13px] font-semibold text-slate-800">{metadata.payload.title}</p>
+						<span class="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">${metadata.payload.amount.toFixed(2)}</span>
+					</div>
+					<p class="text-[11px] capitalize text-slate-500">{metadata.payload.category}</p>
+				</div>
+			</div>
+		{:else if metadata.action === 'record_payment'}
+			<div class="flex items-start gap-2.5">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/80 text-sm shadow-sm ring-1 ring-indigo-100/50">
+					💸
+				</div>
+				<div>
+					<div class="flex items-center gap-1.5 text-[13px] font-semibold text-slate-800">
+						<span>{metadata.payload.from_name}</span>
+						<span class="text-slate-400">→</span>
+						<span>{metadata.payload.to_name}</span>
+						<span class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">${metadata.payload.amount.toFixed(2)}</span>
+					</div>
+					{#if metadata.payload.method}
+						<p class="text-[11px] capitalize text-slate-500">{metadata.payload.method}</p>
+					{/if}
+				</div>
+			</div>
 		{/if}
 	</div>
 
@@ -96,7 +162,23 @@
 			<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
 			</svg>
-			Added to itinerary
+			{#if metadata.action === 'create_activity'}
+				Added to itinerary
+			{:else if metadata.action === 'replace_activity'}
+				Activity replaced
+			{:else if metadata.action === 'delete_activity'}
+				Activity removed
+			{:else if metadata.action === 'update_activity'}
+				Activity updated
+			{:else if metadata.action === 'add_packing_item'}
+				Added to list
+			{:else if metadata.action === 'log_expense'}
+				Expense logged
+			{:else if metadata.action === 'record_payment'}
+				Payment recorded
+			{:else}
+				Approved
+			{/if}
 		</div>
 	{:else if metadata.status === 'dismissed'}
 		<div class="flex items-center gap-1.5 border-t border-slate-200/60 px-3 py-1.5 text-[11px] text-slate-400">
