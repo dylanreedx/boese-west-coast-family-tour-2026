@@ -2,7 +2,7 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import type { Database } from '$lib/types/database';
-	import type { ChatMessage, ActionMetadata } from '$lib/types/app';
+	import type { ChatMessage, ActionMetadata, FamilyFeedback } from '$lib/types/app';
 	import { TRIP_ID } from '$lib/types/app';
 	import { addToast } from '$lib/stores/toasts.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
@@ -196,6 +196,8 @@
 		queryClient.invalidateQueries({ queryKey: ['activities'] });
 		queryClient.invalidateQueries({ queryKey: ['days-with-activities'] });
 		queryClient.invalidateQueries({ queryKey: ['checklists'] });
+		// Sync status change to family chat view
+		queryClient.invalidateQueries({ queryKey: ['group-messages', TRIP_ID] });
 	}
 
 	// Track which messages have been shared to family chat
@@ -215,6 +217,70 @@
 
 	const sharedMessageIds = $derived(sharedMessagesQuery.data ?? new Set<string | null>());
 
+	// Fetch family feedback (reactions) for shared suggestions
+	const familyFeedbackQuery = createQuery(() => ({
+		queryKey: ['family-feedback', TRIP_ID, userId],
+		enabled: !!userId && sharedMessageIds.size > 0,
+		queryFn: async () => {
+			// Get group messages that were shared from this user's guide chat
+			const { data: groupMsgs } = await supabase
+				.from('group_messages')
+				.select('id, shared_from_message_id')
+				.eq('trip_id', TRIP_ID)
+				.eq('user_id', userId!)
+				.not('shared_from_message_id', 'is', null);
+
+			if (!groupMsgs || groupMsgs.length === 0) return new Map<string, FamilyFeedback>();
+
+			const groupMsgIds = groupMsgs.map((m) => m.id);
+
+			// Fetch reactions for these group messages
+			const { data: reactions } = await supabase
+				.from('message_reactions')
+				.select('message_id, emoji, user_id')
+				.in('message_id', groupMsgIds);
+
+			// Fetch member names
+			const { data: members } = await supabase
+				.from('trip_members')
+				.select('user_id, display_name')
+				.eq('trip_id', TRIP_ID);
+
+			const memberNames = new Map((members ?? []).map((m) => [m.user_id, m.display_name]));
+
+			// Build feedback map: chatMessageId -> FamilyFeedback
+			const feedbackMap = new Map<string, FamilyFeedback>();
+
+			for (const gm of groupMsgs) {
+				const chatMsgId = gm.shared_from_message_id;
+				if (!chatMsgId) continue;
+
+				const msgReactions = (reactions ?? []).filter((r) => r.message_id === gm.id);
+
+				if (msgReactions.length === 0) continue;
+
+				// Individual reactions with names
+				const reactionsList = msgReactions.map((r) => ({
+					emoji: r.emoji,
+					memberName: memberNames.get(r.user_id) ?? 'Someone'
+				}));
+
+				// Summarized by emoji
+				const emojiCounts = new Map<string, number>();
+				for (const r of msgReactions) {
+					emojiCounts.set(r.emoji, (emojiCounts.get(r.emoji) ?? 0) + 1);
+				}
+				const summary = [...emojiCounts.entries()].map(([emoji, count]) => ({ emoji, count }));
+
+				feedbackMap.set(chatMsgId, { reactions: reactionsList, reactionSummary: summary });
+			}
+
+			return feedbackMap;
+		}
+	}));
+
+	const familyFeedback = $derived(familyFeedbackQuery.data ?? new Map<string, FamilyFeedback>());
+
 	async function shareToFamily(messageId: string, metadata: ActionMetadata) {
 		if (!userId) return;
 		const { error } = await supabase
@@ -232,6 +298,7 @@
 		}
 		addToast('Shared to Family Chat!');
 		queryClient.invalidateQueries({ queryKey: ['shared-guide-messages', TRIP_ID, userId] });
+		queryClient.invalidateQueries({ queryKey: ['family-feedback', TRIP_ID, userId] });
 	}
 
 	function getShareDescription(meta: ActionMetadata): string {
@@ -368,6 +435,7 @@
 											onStatusChange={handleActionStatusChange}
 											onShare={shareToFamily}
 											isShared={sharedMessageIds.has(msg.id)}
+											familyFeedback={familyFeedback.get(msg.id) ?? null}
 										/>
 									{/if}
 								{/if}

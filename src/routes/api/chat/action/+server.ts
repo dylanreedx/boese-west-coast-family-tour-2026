@@ -52,6 +52,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			.from('chat_messages')
 			.update({ metadata: updated as unknown as Record<string, unknown> })
 			.eq('id', messageId);
+
+		// Sync status to any shared group_messages
+		await syncStatusToGroupMessages(supabase, messageId, updated);
+
 		return json({ ok: true, status: 'dismissed' });
 	}
 
@@ -168,5 +172,31 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		.update({ metadata: updated as unknown as Record<string, unknown> })
 		.eq('id', messageId);
 
+	// Sync status to any shared group_messages
+	await syncStatusToGroupMessages(supabase, messageId, updated);
+
 	return json({ ok: true, status: 'approved', resultId });
 };
+
+/** Update shared_action_metadata in group_messages that reference this chat message */
+async function syncStatusToGroupMessages(
+	supabase: ReturnType<typeof createServiceClient>,
+	chatMessageId: string,
+	updatedMetadata: ActionMetadata
+) {
+	const { data: sharedMessages } = await supabase
+		.from('group_messages')
+		.select('id')
+		.eq('shared_from_message_id', chatMessageId);
+
+	if (sharedMessages && sharedMessages.length > 0) {
+		for (const msg of sharedMessages) {
+			await supabase
+				.from('group_messages')
+				.update({
+					shared_action_metadata: updatedMetadata as unknown as Record<string, unknown>
+				})
+				.eq('id', msg.id);
+		}
+	}
+}

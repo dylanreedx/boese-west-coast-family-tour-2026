@@ -86,36 +86,6 @@
 		if (!msg.shared_action_metadata) return null;
 		return msg.shared_action_metadata as unknown as ActionMetadata;
 	}
-
-	async function handleApprove(originalMessageId: string) {
-		const res = await fetch('/api/chat/action', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ messageId: originalMessageId, action: 'approve' })
-		});
-		if (res.ok) {
-			addToast('Added to itinerary!');
-			queryClient.invalidateQueries({ queryKey: ['group-messages', TRIP_ID] });
-			queryClient.invalidateQueries({ queryKey: ['activities'] });
-			queryClient.invalidateQueries({ queryKey: ['days-with-activities'] });
-			queryClient.invalidateQueries({ queryKey: ['checklists'] });
-		} else {
-			addToast('Failed to approve');
-		}
-	}
-
-	async function handleDismiss(originalMessageId: string) {
-		const res = await fetch('/api/chat/action', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ messageId: originalMessageId, action: 'dismiss' })
-		});
-		if (res.ok) {
-			queryClient.invalidateQueries({ queryKey: ['group-messages', TRIP_ID] });
-		} else {
-			addToast('Failed to dismiss');
-		}
-	}
 </script>
 
 <div class="flex h-full flex-col">
@@ -148,7 +118,7 @@
 					{#if isOwn}
 						<!-- Own message: right-aligned -->
 						<div class="flex justify-end">
-							<div class="max-w-[80%]">
+							<div class="max-w-[85%]">
 								{#if isSharedSuggestion(msg)}
 									{@const actionMeta = getActionMetadata(msg)}
 									{#if actionMeta}
@@ -157,15 +127,11 @@
 												metadata={actionMeta}
 												sharerName="You"
 												isOwner={true}
-												messageId={msg.id}
-												originalMessageId={msg.shared_from_message_id ?? ''}
-												onApprove={handleApprove}
-												onDismiss={handleDismiss}
 											/>
 										{/await}
 									{/if}
 									{#if msg.content}
-										<p class="mt-1 text-xs text-primary-200">{msg.content}</p>
+										<p class="mt-1 text-xs text-slate-500 italic">{msg.content}</p>
 									{/if}
 								{:else}
 									<div class="rounded-2xl rounded-br-md bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">
@@ -187,7 +153,7 @@
 							>
 								{memberInfo?.display_name?.[0]?.toUpperCase() ?? '?'}
 							</div>
-							<div class="max-w-[80%]">
+							<div class="max-w-[85%]">
 								<span class="mb-0.5 block text-xs font-semibold text-slate-600">
 									{memberInfo?.display_name ?? 'Unknown'}
 								</span>
@@ -199,15 +165,11 @@
 												metadata={actionMeta}
 												sharerName={memberInfo?.display_name ?? 'Unknown'}
 												isOwner={false}
-												messageId={msg.id}
-												originalMessageId={msg.shared_from_message_id ?? ''}
-												onApprove={handleApprove}
-												onDismiss={handleDismiss}
 											/>
 										{/await}
 									{/if}
 									{#if msg.content}
-										<p class="mt-1 text-xs text-slate-500">{msg.content}</p>
+										<p class="mt-1 text-xs text-slate-500 italic">{msg.content}</p>
 									{/if}
 								{:else}
 									<div class="rounded-2xl rounded-bl-md bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm">

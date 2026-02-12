@@ -30,7 +30,9 @@ When giving recommendations:
 
 Be warm, enthusiastic, and conversational. You're like a friend who's lived everywhere they're visiting. Use short paragraphs and bullet points for readability.
 
-You also have the ability to take actions for the user. When a user asks you to add something to their itinerary, add a packing item, or suggests a change, use the provided tools. The user will need to approve any actions before they take effect. Only call tools when the user clearly wants to add or change something — don't call tools just because you're making a recommendation.`;
+You also have the ability to take actions for the user. When a user asks you to add something to their itinerary, add a packing item, or suggests a change, use the provided tools. The user will need to approve any actions before they take effect. Only call tools when the user clearly wants to add or change something — don't call tools just because you're making a recommendation.
+
+When family feedback is provided below, use it to inform your recommendations. If family members are excited about a suggestion (positive reactions), lean into similar recommendations. If something was dismissed, don't re-suggest it. You can naturally reference what the family thinks, like "Your family seemed excited about that!" but don't be forced about it.`;
 
 const TOOLS: ChatCompletionTool[] = [
 	{
@@ -160,6 +162,83 @@ function buildItineraryContext(
 	return lines.join('\n');
 }
 
+async function buildFamilyFeedbackContext(
+	supabase: ReturnType<typeof createServiceClient>,
+	userId: string
+): Promise<string> {
+	// Find this user's chat messages that have been shared to family
+	const { data: sharedGroupMessages } = await supabase
+		.from('group_messages')
+		.select('id, shared_from_message_id, shared_action_metadata')
+		.eq('trip_id', TRIP_ID)
+		.eq('user_id', userId)
+		.not('shared_from_message_id', 'is', null);
+
+	if (!sharedGroupMessages || sharedGroupMessages.length === 0) return '';
+
+	// Get reactions for these shared messages
+	const groupMsgIds = sharedGroupMessages.map((m) => m.id);
+	const { data: reactions } = await supabase
+		.from('message_reactions')
+		.select('message_id, emoji, user_id')
+		.in('message_id', groupMsgIds);
+
+	// Get member names for reaction authors
+	const reactionUserIds = [...new Set((reactions ?? []).map((r) => r.user_id))];
+	let memberNameMap = new Map<string, string>();
+	if (reactionUserIds.length > 0) {
+		const { data: members } = await supabase
+			.from('trip_members')
+			.select('user_id, display_name')
+			.eq('trip_id', TRIP_ID)
+			.in('user_id', reactionUserIds);
+		memberNameMap = new Map((members ?? []).map((m) => [m.user_id, m.display_name]));
+	}
+
+	// Build context lines
+	const lines = ['Family feedback on your shared suggestions:'];
+
+	for (const msg of sharedGroupMessages) {
+		const meta = msg.shared_action_metadata as unknown as ActionMetadata | null;
+		if (!meta) continue;
+
+		let title = '';
+		if (meta.action === 'create_activity') {
+			title = `"${meta.payload.title}" (Day ${meta.payload.day_number})`;
+		} else if (meta.action === 'add_packing_item') {
+			title = `"${meta.payload.label}" (${meta.payload.checklist_type} list)`;
+		} else if (meta.action === 'suggest_itinerary_change') {
+			title = `Day ${meta.payload.day_number} suggestion`;
+		}
+
+		const statusLabel =
+			meta.status === 'approved'
+				? 'Added to itinerary'
+				: meta.status === 'dismissed'
+					? 'Dismissed'
+					: 'Pending';
+
+		const msgReactions = (reactions ?? []).filter((r) => r.message_id === msg.id);
+		let reactionStr = 'No reactions yet';
+		if (msgReactions.length > 0) {
+			const emojiGroups = new Map<string, string[]>();
+			for (const r of msgReactions) {
+				const name = memberNameMap.get(r.user_id) ?? 'Someone';
+				const group = emojiGroups.get(r.emoji) ?? [];
+				group.push(name);
+				emojiGroups.set(r.emoji, group);
+			}
+			reactionStr = [...emojiGroups.entries()]
+				.map(([emoji, names]) => `${emoji} from ${names.join(', ')}`)
+				.join('; ');
+		}
+
+		lines.push(`- ${title}: ${statusLabel}. ${reactionStr}`);
+	}
+
+	return lines.join('\n');
+}
+
 function buildActionMetadata(
 	toolName: string,
 	args: Record<string, unknown>
@@ -250,6 +329,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		.order('sort_order', { referencedTable: 'activities' });
 
 	const itineraryContext = buildItineraryContext(days ?? []);
+	const familyContext = await buildFamilyFeedbackContext(supabase, user.id);
 
 	// Fetch recent chat history for this user (last 30 messages)
 	const { data: history } = await supabase
@@ -275,9 +355,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	}
 
 	// Build messages for OpenAI
-	const systemContent = itineraryContext
-		? `${SYSTEM_PROMPT}\n\n${itineraryContext}`
-		: SYSTEM_PROMPT;
+	const contextParts = [SYSTEM_PROMPT];
+	if (itineraryContext) contextParts.push(itineraryContext);
+	if (familyContext) contextParts.push(familyContext);
+	const systemContent = contextParts.join('\n\n');
 
 	const messages: OpenAI.ChatCompletionMessageParam[] = [
 		{ role: 'system', content: systemContent },

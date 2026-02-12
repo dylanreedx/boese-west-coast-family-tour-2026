@@ -61,6 +61,7 @@ export function setupRealtime(
 			{ event: '*', schema: 'public', table: 'group_messages' },
 			() => {
 				queryClient.invalidateQueries({ queryKey: ['group-messages'] });
+				queryClient.invalidateQueries({ queryKey: ['family-feedback'] });
 			}
 		)
 		.on(
@@ -68,6 +69,8 @@ export function setupRealtime(
 			{ event: '*', schema: 'public', table: 'message_reactions' },
 			() => {
 				queryClient.invalidateQueries({ queryKey: ['group-messages'] });
+				// Also refresh family feedback shown on guide chat ActionCards
+				queryClient.invalidateQueries({ queryKey: ['family-feedback'] });
 			}
 		)
 		.subscribe();
