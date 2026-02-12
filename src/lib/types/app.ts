@@ -95,6 +95,72 @@ export type ActionMetadata =
 				day_number: number;
 				suggestion_text: string;
 			};
+	  }
+	| {
+			action: 'replace_activity';
+			status: ActionStatus;
+			payload: {
+				day_number: number;
+				old_title: string;
+				new_title: string;
+				new_type: ActivityType;
+				start_time?: string;
+				location_name?: string;
+				description?: string;
+				cost_estimate?: number;
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'delete_activity';
+			status: ActionStatus;
+			payload: {
+				day_number: number;
+				activity_title: string;
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'update_activity';
+			status: ActionStatus;
+			payload: {
+				day_number: number;
+				activity_title: string;
+				updates: {
+					start_time?: string;
+					cost_estimate?: number;
+					status?: ActivityStatus;
+					description?: string;
+					location_name?: string;
+					title?: string;
+				};
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'log_expense';
+			status: ActionStatus;
+			payload: {
+				title: string;
+				amount: number;
+				category: ExpenseCategory;
+				day_number?: number;
+				paid_by_name?: string;
+				notes?: string;
+			};
+			result_id?: string;
+	  }
+	| {
+			action: 'record_payment';
+			status: ActionStatus;
+			payload: {
+				from_name: string;
+				to_name: string;
+				amount: number;
+				method?: string;
+				notes?: string;
+			};
+			result_id?: string;
 	  };
 
 export type FamilyFeedback = {
