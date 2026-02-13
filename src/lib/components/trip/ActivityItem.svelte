@@ -116,13 +116,14 @@
 				{/if}
 			</div>
 
-			{#if !isDrive && activity.location_name}
+			{#if !isDrive && (activity.location_name || activity.google_place_id)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="mt-2" onclick={(e) => e.stopPropagation()}>
 					<PlaceCard
 						title={activity.title}
 						locationName={activity.location_name}
+						googlePlaceId={activity.google_place_id}
 						mapActivities={allActivities}
 						currentActivityId={activity.id}
 						{dayNumber}
