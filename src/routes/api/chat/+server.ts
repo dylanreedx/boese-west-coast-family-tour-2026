@@ -695,7 +695,7 @@ async function fetchPlacesSearch(query: string): Promise<{ places: Array<Record<
 				'Content-Type': 'application/json',
 				'X-Goog-Api-Key': apiKey,
 				'X-Goog-FieldMask':
-					'places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
+					'places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
 			},
 			body: JSON.stringify({ textQuery: query, maxResultCount: 3 })
 		});
@@ -714,6 +714,7 @@ async function fetchPlacesSearch(query: string): Promise<{ places: Array<Record<
 				);
 
 			return {
+				googlePlaceId: place.id,
 				name: place.displayName?.text ?? '',
 				rating: place.rating,
 				userRatingCount: place.userRatingCount,

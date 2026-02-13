@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				'Content-Type': 'application/json',
 				'X-Goog-Api-Key': apiKey,
 				'X-Goog-FieldMask':
-					'places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
+					'places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
 			},
 			body: JSON.stringify({ textQuery: query, maxResultCount: 3 })
 		});
@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		const places: PlaceDetails[] = rawPlaces.map(
 			(place: {
+				id?: string;
 				displayName?: { text?: string };
 				rating?: number;
 				userRatingCount?: number;
@@ -62,6 +63,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					);
 
 				const details: PlaceDetails = {
+					googlePlaceId: place.id,
 					name: place.displayName?.text ?? query,
 					rating: place.rating,
 					userRatingCount: place.userRatingCount,

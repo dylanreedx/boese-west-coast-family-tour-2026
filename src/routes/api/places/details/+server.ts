@@ -8,25 +8,79 @@ const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 export const GET: RequestHandler = async ({ url }) => {
 	const query = url.searchParams.get('q');
-	if (!query) return json({ details: null });
+	const placeId = url.searchParams.get('placeId');
+	if (!query && !placeId) return json({ details: null });
 
 	const apiKey = env.GOOGLE_PLACES_API_KEY;
 	if (!apiKey) return json({ details: null });
 
-	const cacheKey = query.toLowerCase().trim();
+	const cacheKey = placeId ? `pid:${placeId}` : query!.toLowerCase().trim();
 	const cached = cache.get(cacheKey);
 	if (cached && Date.now() - cached.ts < CACHE_TTL) {
 		return json({ details: cached.details });
 	}
 
 	try {
+		// Direct placeId lookup mode
+		if (placeId) {
+			const res = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+				headers: {
+					'X-Goog-Api-Key': apiKey,
+					'X-Goog-FieldMask':
+						'id,displayName,rating,userRatingCount,priceLevel,formattedAddress,regularOpeningHours,location,photos,websiteUri,googleMapsUri,editorialSummary'
+				}
+			});
+
+			if (!res.ok) {
+				console.error('Places placeId lookup error:', res.status, await res.text());
+				cache.set(cacheKey, { details: null, ts: Date.now() });
+				return json({ details: null });
+			}
+
+			const place = await res.json();
+
+			const photos: string[] = (place.photos ?? [])
+				.slice(0, 5)
+				.map(
+					(p: { name: string }) =>
+						`https://places.googleapis.com/v1/${p.name}/media?maxWidthPx=600&maxHeightPx=400&key=${apiKey}`
+				);
+
+			const details: PlaceDetails = {
+				googlePlaceId: place.id,
+				name: place.displayName?.text ?? placeId,
+				rating: place.rating,
+				userRatingCount: place.userRatingCount,
+				priceLevel: place.priceLevel,
+				formattedAddress: place.formattedAddress,
+				openNow: place.regularOpeningHours?.openNow,
+				weekdayHours: place.regularOpeningHours?.weekdayDescriptions,
+				location: place.location
+					? { lat: place.location.latitude, lng: place.location.longitude }
+					: undefined,
+				photos,
+				websiteUri: place.websiteUri,
+				googleMapsUri: place.googleMapsUri,
+				editorialSummary: place.editorialSummary?.text
+			};
+
+			if (details.location) {
+				const placeName = place.displayName?.text ?? placeId;
+				details.mapsEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(placeName)}`;
+			}
+
+			cache.set(cacheKey, { details, ts: Date.now() });
+			return json({ details });
+		}
+
+		// Text search mode
 		const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-Goog-Api-Key': apiKey,
 				'X-Goog-FieldMask':
-					'places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
+					'places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.regularOpeningHours,places.location,places.photos,places.websiteUri,places.googleMapsUri,places.editorialSummary'
 			},
 			body: JSON.stringify({ textQuery: query, maxResultCount: 1 })
 		});
@@ -52,6 +106,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 
 		const details: PlaceDetails = {
+			googlePlaceId: place.id,
 			name: place.displayName?.text ?? query,
 			rating: place.rating,
 			userRatingCount: place.userRatingCount,
@@ -69,7 +124,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		};
 
 		if (details.location) {
-			details.mapsEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(query)}`;
+			details.mapsEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(query!)}`;
 		}
 
 		cache.set(cacheKey, { details, ts: Date.now() });
