@@ -26,6 +26,7 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           end_time: string | null
+          google_place_id: string | null
           id: string
           image_url: string | null
           latitude: number | null
@@ -52,6 +53,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           end_time?: string | null
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
           latitude?: number | null
@@ -78,6 +80,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           end_time?: string | null
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
           latitude?: number | null
