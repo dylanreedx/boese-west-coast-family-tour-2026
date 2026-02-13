@@ -40,7 +40,9 @@ You can log expenses and record payments between family members. When someone sa
 
 For budget questions like "how much have we spent?", use get_budget_summary to fetch the latest data, then present it in a clear, readable format.
 
-When the user asks what's planned for a specific day or wants to see their schedule, use get_day_details to show them a rich visual overview. When they ask to find or search for places, restaurants, or attractions, use search_places to show them results with photos and ratings they can browse and add directly to their itinerary.`;
+When the user asks what's planned for a specific day or wants to see their schedule, use get_day_details to show them a rich visual overview. When they ask to find or search for places, restaurants, or attractions, use search_places to show them results with photos and ratings they can browse and add directly to their itinerary.
+
+When you use search_places and then create or replace an activity based on a result, always pass the google_place_id, latitude, longitude, location_address, and image_url from the search result to ensure the place is linked precisely.`;
 
 const TOOLS: ChatCompletionTool[] = [
 	{
@@ -87,7 +89,12 @@ const TOOLS: ChatCompletionTool[] = [
 					cost_estimate: {
 						type: 'number',
 						description: 'Estimated cost in USD, optional'
-					}
+					},
+					google_place_id: { type: 'string', description: 'Google Place ID from a search_places result' },
+					latitude: { type: 'number', description: 'Latitude of the place' },
+					longitude: { type: 'number', description: 'Longitude of the place' },
+					location_address: { type: 'string', description: 'Full formatted address' },
+					image_url: { type: 'string', description: 'Photo URL of the place' }
 				},
 				required: ['day_number', 'title', 'type']
 			}
@@ -155,7 +162,12 @@ const TOOLS: ChatCompletionTool[] = [
 					start_time: { type: 'string', description: 'Start time in HH:MM format (24h), optional' },
 					location_name: { type: 'string', description: 'Location name or address, optional' },
 					description: { type: 'string', description: 'Brief description, optional' },
-					cost_estimate: { type: 'number', description: 'Estimated cost in USD, optional' }
+					cost_estimate: { type: 'number', description: 'Estimated cost in USD, optional' },
+					google_place_id: { type: 'string', description: 'Google Place ID from a search_places result' },
+					latitude: { type: 'number', description: 'Latitude of the place' },
+					longitude: { type: 'number', description: 'Longitude of the place' },
+					location_address: { type: 'string', description: 'Full formatted address' },
+					image_url: { type: 'string', description: 'Photo URL of the place' }
 				},
 				required: ['day_number', 'old_activity_title', 'new_title', 'new_type']
 			}
@@ -196,7 +208,12 @@ const TOOLS: ChatCompletionTool[] = [
 						description: 'New status, optional'
 					},
 					description: { type: 'string', description: 'Updated description, optional' },
-					location_name: { type: 'string', description: 'Updated location, optional' }
+					location_name: { type: 'string', description: 'Updated location, optional' },
+					google_place_id: { type: 'string', description: 'Google Place ID from a search_places result' },
+					latitude: { type: 'number', description: 'Latitude of the place' },
+					longitude: { type: 'number', description: 'Longitude of the place' },
+					location_address: { type: 'string', description: 'Full formatted address' },
+					image_url: { type: 'string', description: 'Photo URL of the place' }
 				},
 				required: ['day_number', 'activity_title']
 			}
@@ -428,7 +445,12 @@ function buildActionMetadata(
 					start_time: args.start_time as string | undefined,
 					location_name: args.location_name as string | undefined,
 					description: args.description as string | undefined,
-					cost_estimate: args.cost_estimate as number | undefined
+					cost_estimate: args.cost_estimate as number | undefined,
+					google_place_id: args.google_place_id as string | undefined,
+					latitude: args.latitude as number | undefined,
+					longitude: args.longitude as number | undefined,
+					location_address: args.location_address as string | undefined,
+					image_url: args.image_url as string | undefined
 				}
 			};
 		case 'add_packing_item':
@@ -461,7 +483,12 @@ function buildActionMetadata(
 					start_time: args.start_time as string | undefined,
 					location_name: args.location_name as string | undefined,
 					description: args.description as string | undefined,
-					cost_estimate: args.cost_estimate as number | undefined
+					cost_estimate: args.cost_estimate as number | undefined,
+					google_place_id: args.google_place_id as string | undefined,
+					latitude: args.latitude as number | undefined,
+					longitude: args.longitude as number | undefined,
+					location_address: args.location_address as string | undefined,
+					image_url: args.image_url as string | undefined
 				}
 			};
 		case 'delete_activity':
@@ -485,7 +512,12 @@ function buildActionMetadata(
 						cost_estimate: args.cost_estimate as number | undefined,
 						status: args.status as 'tentative' | 'confirmed' | 'tbd' | undefined,
 						description: args.description as string | undefined,
-						location_name: args.location_name as string | undefined
+						location_name: args.location_name as string | undefined,
+						google_place_id: args.google_place_id as string | undefined,
+						latitude: args.latitude as number | undefined,
+						longitude: args.longitude as number | undefined,
+						location_address: args.location_address as string | undefined,
+						image_url: args.image_url as string | undefined
 					}
 				}
 			};

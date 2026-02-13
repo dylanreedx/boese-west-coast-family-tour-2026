@@ -130,6 +130,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				location_name: payload.location_name ?? null,
 				description: payload.description ?? null,
 				cost_estimate: payload.cost_estimate ?? null,
+				google_place_id: payload.google_place_id ?? null,
+				latitude: payload.latitude ?? null,
+				longitude: payload.longitude ?? null,
+				location_address: payload.location_address ?? null,
+				image_url: payload.image_url ?? null,
 				sort_order: nextOrder,
 				source: 'ai-guide',
 				created_by: user.id
@@ -210,6 +215,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				location_name: payload.location_name ?? null,
 				description: payload.description ?? null,
 				cost_estimate: payload.cost_estimate ?? null,
+				google_place_id: payload.google_place_id ?? null,
+				latitude: payload.latitude ?? null,
+				longitude: payload.longitude ?? null,
+				location_address: payload.location_address ?? null,
+				image_url: payload.image_url ?? null,
 				sort_order: match.sort_order,
 				source: 'ai-guide',
 				created_by: user.id
@@ -247,6 +257,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		if (payload.updates.description !== undefined) updateFields.description = payload.updates.description;
 		if (payload.updates.location_name !== undefined) updateFields.location_name = payload.updates.location_name;
 		if (payload.updates.title !== undefined) updateFields.title = payload.updates.title;
+		if (payload.updates.google_place_id !== undefined) updateFields.google_place_id = payload.updates.google_place_id;
+		if (payload.updates.latitude !== undefined) updateFields.latitude = payload.updates.latitude;
+		if (payload.updates.longitude !== undefined) updateFields.longitude = payload.updates.longitude;
+		if (payload.updates.location_address !== undefined) updateFields.location_address = payload.updates.location_address;
+		if (payload.updates.image_url !== undefined) updateFields.image_url = payload.updates.image_url;
 
 		const { error: updateError } = await supabase
 			.from('activities')
