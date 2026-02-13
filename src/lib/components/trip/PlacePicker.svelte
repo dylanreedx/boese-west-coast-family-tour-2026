@@ -93,6 +93,8 @@
 			);
 			map.on('load', () => {
 				mapLoaded = true;
+				// Ensure canvas matches container after flexbox layout settles
+				requestAnimationFrame(() => map?.resize());
 			});
 			// Tap map background to deselect
 			map.on('click', () => {
@@ -420,8 +422,8 @@
 		.picker-overlay {
 			inset: 24px;
 			margin: auto;
-			max-width: 48rem;
-			max-height: calc(100vh - 48px);
+			width: min(48rem, calc(100vw - 48px));
+			height: calc(100vh - 48px);
 			border-radius: 1rem;
 			box-shadow:
 				0 25px 50px -12px rgba(0, 0, 0, 0.25),
