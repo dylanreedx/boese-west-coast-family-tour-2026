@@ -6,6 +6,7 @@
 	let {
 		title,
 		locationName,
+		googlePlaceId,
 		defaultExpanded = false,
 		mapActivities,
 		currentActivityId,
@@ -13,6 +14,7 @@
 	}: {
 		title: string;
 		locationName?: string;
+		googlePlaceId?: string;
 		defaultExpanded?: boolean;
 		mapActivities?: Array<{ id: string; title: string; latitude: number | null; longitude: number | null; sort_order: number }>;
 		currentActivityId?: string;
@@ -26,11 +28,16 @@
 	);
 
 	const detailsQuery = createQuery(() => ({
-		queryKey: ['place-details', searchQuery],
-		enabled: !!searchQuery,
+		queryKey: googlePlaceId
+			? ['place-details-by-id', googlePlaceId]
+			: ['place-details', searchQuery],
+		enabled: !!(googlePlaceId || searchQuery),
 		staleTime: 1000 * 60 * 30,
 		queryFn: async () => {
-			const res = await fetch(`/api/places/details?q=${encodeURIComponent(searchQuery)}`);
+			const url = googlePlaceId
+				? `/api/places/details?placeId=${encodeURIComponent(googlePlaceId)}`
+				: `/api/places/details?q=${encodeURIComponent(searchQuery)}`;
+			const res = await fetch(url);
 			if (!res.ok) return null;
 			const data = await res.json();
 			return data.details as PlaceDetails | null;
