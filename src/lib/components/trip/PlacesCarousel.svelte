@@ -43,7 +43,12 @@
 				title: place.name,
 				type: inferType(place),
 				location_name: place.formattedAddress,
-				description: place.editorialSummary
+				description: place.editorialSummary,
+				google_place_id: place.googlePlaceId,
+				latitude: place.location?.lat,
+				longitude: place.location?.lng,
+				location_address: place.formattedAddress,
+				image_url: place.photos?.[0]
 			}
 		};
 		onQuickAdd(metadata);
