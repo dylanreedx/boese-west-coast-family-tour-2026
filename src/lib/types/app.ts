@@ -76,6 +76,11 @@ export type ActionMetadata =
 				location_name?: string;
 				description?: string;
 				cost_estimate?: number;
+				google_place_id?: string;
+				latitude?: number;
+				longitude?: number;
+				location_address?: string;
+				image_url?: string;
 			};
 			result_id?: string;
 	  }
@@ -108,6 +113,11 @@ export type ActionMetadata =
 				location_name?: string;
 				description?: string;
 				cost_estimate?: number;
+				google_place_id?: string;
+				latitude?: number;
+				longitude?: number;
+				location_address?: string;
+				image_url?: string;
 			};
 			result_id?: string;
 	  }
@@ -133,6 +143,11 @@ export type ActionMetadata =
 					description?: string;
 					location_name?: string;
 					title?: string;
+					google_place_id?: string;
+					latitude?: number;
+					longitude?: number;
+					location_address?: string;
+					image_url?: string;
 				};
 			};
 			result_id?: string;
@@ -169,6 +184,7 @@ export type FamilyFeedback = {
 };
 
 export type PlaceDetails = {
+	googlePlaceId?: string;
 	name: string;
 	rating?: number;
 	userRatingCount?: number;
