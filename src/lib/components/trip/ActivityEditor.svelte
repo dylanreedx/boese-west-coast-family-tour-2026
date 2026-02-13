@@ -1,15 +1,15 @@
 <script lang="ts">
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import type { Database } from '$lib/types/database';
-	import type { ActivityType, ActivityStatus, ActivityInsert, ActivityUpdate } from '$lib/types/app';
+	import type { ActivityType, ActivityStatus, ActivityInsert, ActivityUpdate, PlaceDetails } from '$lib/types/app';
 	import { ACTIVITY_ICONS, ACTIVITY_TYPE_LABELS } from '$lib/utils/activity-icons';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import LocationAutocomplete from '$lib/components/ui/LocationAutocomplete.svelte';
-	import { useLocationSuggestions } from '$lib/queries/activities';
+	import PlacePicker from '$lib/components/trip/PlacePicker.svelte';
 
 	let {
 		open = $bindable(false),
 		dayId,
+		dayNumber = 1,
 		existing = null,
 		supabase,
 		onsave,
@@ -17,13 +17,12 @@
 	}: {
 		open: boolean;
 		dayId: string;
+		dayNumber?: number;
 		existing?: (ActivityUpdate & { id: string }) | null;
 		supabase: SupabaseClient<Database>;
 		onsave?: (data: ActivityInsert | (ActivityUpdate & { id: string })) => void;
 		ondelete?: (id: string, dayId: string) => void;
 	} = $props();
-
-	const locationSuggestions = useLocationSuggestions(supabase);
 
 	const activityTypes: ActivityType[] = ['sightseeing', 'restaurant', 'hotel', 'activity', 'drive', 'flight', 'shopping', 'rest', 'other'];
 	const statuses: ActivityStatus[] = ['confirmed', 'tentative', 'tbd'];
@@ -36,6 +35,12 @@
 	let startTime = $state('');
 	let costEstimate = $state('');
 	let confirmDelete = $state(false);
+	let googlePlaceId = $state<string | null>(null);
+	let latitude = $state<number | null>(null);
+	let longitude = $state<number | null>(null);
+	let locationAddress = $state<string | null>(null);
+	let imageUrl = $state<string | null>(null);
+	let placePickerOpen = $state(false);
 
 	// Sync form fields when existing activity changes or editor opens
 	$effect(() => {
@@ -47,6 +52,11 @@
 			locationName = existing?.location_name ?? '';
 			startTime = existing?.start_time ?? '';
 			costEstimate = existing?.cost_estimate != null ? String(existing.cost_estimate) : '';
+			googlePlaceId = existing?.google_place_id ?? null;
+			latitude = existing?.latitude ?? null;
+			longitude = existing?.longitude ?? null;
+			locationAddress = existing?.location_address ?? null;
+			imageUrl = existing?.image_url ?? null;
 			confirmDelete = false;
 		}
 	});
@@ -64,7 +74,12 @@
 			location_name: locationName.trim() || null,
 			start_time: startTime || null,
 			cost_estimate: parsedCost && !isNaN(parsedCost) ? parsedCost : null,
-			day_id: dayId
+			day_id: dayId,
+			google_place_id: googlePlaceId,
+			latitude,
+			longitude,
+			location_address: locationAddress,
+			image_url: imageUrl
 		};
 
 		if (existing?.id) {
@@ -89,6 +104,25 @@
 		resetForm();
 	}
 
+	function handlePlaceSelect(place: PlaceDetails) {
+		googlePlaceId = place.googlePlaceId ?? null;
+		locationName = place.name;
+		locationAddress = place.formattedAddress ?? null;
+		latitude = place.location?.lat ?? null;
+		longitude = place.location?.lng ?? null;
+		imageUrl = place.photos?.[0] ?? null;
+		placePickerOpen = false;
+	}
+
+	function clearPlace() {
+		googlePlaceId = null;
+		latitude = null;
+		longitude = null;
+		locationAddress = null;
+		imageUrl = null;
+		locationName = '';
+	}
+
 	function resetForm() {
 		title = '';
 		type = 'activity';
@@ -98,6 +132,11 @@
 		startTime = '';
 		costEstimate = '';
 		confirmDelete = false;
+		googlePlaceId = null;
+		latitude = null;
+		longitude = null;
+		locationAddress = null;
+		imageUrl = null;
 	}
 </script>
 
@@ -164,12 +203,58 @@
 
 		<!-- Location -->
 		<div>
-			<label for="act-location" class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Location (optional)</label>
-			<LocationAutocomplete
-				id="act-location"
-				bind:value={locationName}
-				suggestions={locationSuggestions.data ?? []}
-			/>
+			<label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Location</label>
+			{#if googlePlaceId && locationName}
+				<!-- Selected place chip -->
+				<div class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+					{#if imageUrl}
+						<img src={imageUrl} alt="" class="h-10 w-14 flex-shrink-0 rounded-lg object-cover" />
+					{:else}
+						<div class="flex h-10 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-slate-200">
+							<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0Z" />
+							</svg>
+						</div>
+					{/if}
+					<div class="min-w-0 flex-1">
+						<p class="truncate text-sm font-semibold text-slate-800">{locationName}</p>
+						{#if locationAddress}
+							<p class="truncate text-[11px] text-slate-400">{locationAddress}</p>
+						{/if}
+					</div>
+					<div class="flex items-center gap-1">
+						<button type="button" onclick={() => placePickerOpen = true} class="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600">
+							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" />
+							</svg>
+						</button>
+						<button type="button" onclick={clearPlace} class="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-rose-100 hover:text-rose-500">
+							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+				</div>
+			{:else}
+				<!-- "Find a spot" card -->
+				<button
+					type="button"
+					onclick={() => placePickerOpen = true}
+					class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 transition-all hover:border-primary-300 hover:bg-primary-50/30 active:scale-[0.98]"
+				>
+					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100">
+						<svg class="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+							<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0Z" />
+						</svg>
+					</div>
+					<div class="text-left">
+						<p class="text-sm font-semibold text-slate-700">Find a spot</p>
+						<p class="text-[11px] text-slate-400">Search places on the map</p>
+					</div>
+				</button>
+			{/if}
 		</div>
 
 		<!-- Cost -->
@@ -219,3 +304,5 @@
 		{/if}
 	</div>
 </BottomSheet>
+
+<PlacePicker bind:open={placePickerOpen} {dayNumber} onSelect={handlePlaceSelect} />

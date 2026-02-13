@@ -61,7 +61,12 @@
 			location_name: activity.location_name,
 			start_time: activity.start_time,
 			cost_estimate: activity.cost_estimate,
-			day_id: activity.day_id
+			day_id: activity.day_id,
+			google_place_id: activity.google_place_id,
+			latitude: activity.latitude,
+			longitude: activity.longitude,
+			location_address: activity.location_address,
+			image_url: activity.image_url
 		};
 		editorOpen = true;
 	}
@@ -252,6 +257,7 @@
 	<ActivityEditor
 		bind:open={editorOpen}
 		dayId={dayQuery.data.id}
+		{dayNumber}
 		existing={editingActivity}
 		supabase={data.supabase}
 		onsave={handleSave}
