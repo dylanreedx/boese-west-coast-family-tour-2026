@@ -326,8 +326,8 @@
 		</div>
 
 		<!-- Map container (flex-1 fills remaining space) -->
-		<div class="relative min-h-0 flex-1">
-			<div bind:this={mapContainer} class="absolute inset-0"></div>
+		<div class="relative min-h-0 flex-1 overflow-hidden">
+			<div bind:this={mapContainer} class="h-full w-full"></div>
 
 			<!-- Empty state hint -->
 			{#if !searchResults.length && !isSearching && mapLoaded}
